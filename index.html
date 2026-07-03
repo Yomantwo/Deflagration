@@ -801,7 +801,7 @@ const SAVE_VERSION=1;                      // version du format de sauvegarde
 function migrate(d){let v=d.version||0;
   // exemple futur : if(v<2){ d.cendres = recalcule(d.cendres); v=2; }
   d.version=SAVE_VERSION;return d;}
-function save(){try{const d={version:SAVE_VERSION,debris:G.debris,totalDebris:G.totalDebris,cendres:G.cendres,cendresEarned:G.cendresEarned,raff:G.raff,
+function save(){if(G._noSave)return;try{const d={version:SAVE_VERSION,debris:G.debris,totalDebris:G.totalDebris,cendres:G.cendres,cendresEarned:G.cendresEarned,raff:G.raff,
   upg:G.upg,tree:G.tree,cendresSpent:G.cendresSpent,peakRate:G.peakRate,miniCorner:G.miniCorner,miniOpen:G.miniOpen,
   stats:G.stats,ach:G.ach,dps:G.dps,maxTierSeen:G.maxTierSeen,opt:G.opt,ts:Date.now()};localStorage.setItem(SKEY,JSON.stringify(d));
   document.getElementById("savenote").textContent=t("save_at",{t:new Date().toLocaleTimeString()});}catch(e){}}
@@ -1733,7 +1733,7 @@ function importSave(){const code=document.getElementById("opt-save").value.trim(
   if(!code){optMsg(t("opt_paste_first"),false);return;}
   try{const raw=decodeURIComponent(escape(atob(code)));const obj=JSON.parse(raw);
     if(!obj||typeof obj!=="object"||Array.isArray(obj))throw 0;
-    localStorage.setItem(SKEY,JSON.stringify(obj));optMsg(t("opt_import_ok"));setTimeout(()=>location.reload(),700);}
+    G._noSave=true;localStorage.setItem(SKEY,JSON.stringify(obj));optMsg(t("opt_import_ok"));setTimeout(()=>location.reload(),700);}
   catch(e){optMsg(t("opt_import_bad"),false);}}
 function resetGame(){if(!confirm(t("dlg_reset")))return;
   localStorage.removeItem(SKEY);location.reload();}
