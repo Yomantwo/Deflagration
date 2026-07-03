@@ -742,9 +742,14 @@ function cost(k){return unitCost(k,curLvl(k));}
 function sumCost(k,lv,n){let s=0;for(let i=0;i<n;i++)s+=unitCost(k,lv+i);return s;}
 function maxAffordable(k){let lv=curLvl(k),n=0,spent=0;const cap=(k==="raff")?(raffCap()-1):Infinity;
   while(n<100000){if(k==="raff"&&lv>=cap)break;const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return{n,spent};}
+function targetN(k){if(G.buyMult==="max")return maxAffordable(k).n;
+  const step=G.buyMult,L=(k==="raff")?G.raff:G.upg[k];let tgt=step-(L%step);
+  if(k==="raff")tgt=Math.min(tgt,Math.max(0,raffCap()-G.raff));
+  if(k==="flamme")tgt=Math.min(tgt,Math.max(0,(G.gridN-2)-(1+G.upg.flamme+treeRange())));
+  return tgt;}
 function wantN(k){if(G.buyMult==="max")return maxAffordable(k).n;
-  let target=Math.min(G.buyMult,(k==="raff")?Math.max(0,(raffCap()-1)-curLvl(k)):Infinity);
-  let lv=curLvl(k),spent=0,n=0;for(let i=0;i<target;i++){const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return n;}
+  const tgt=targetN(k);if(tgt<1)return 0;
+  return sumCost(k,curLvl(k),tgt)<=G.debris?tgt:0;}
 function buy(k){if(k==="flamme"&&flameAtCap())return;const n=wantN(k);if(n<1)return;const s=sumCost(k,curLvl(k),n);if(s>G.debris)return;G.debris-=s;sfx("buy");
   if(k==="raff"){G.raff+=n;if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;}else G.upg[k]+=n;}
 
@@ -996,9 +1001,9 @@ function mkUpg(id){const el=document.getElementById(id);
   el.innerHTML='<div class="row"><span class="nm"></span><span class="lv"></span></div><div class="ef"></div><div class="ct"></div>';
   return{el,nm:el.querySelector('.nm'),lv:el.querySelector('.lv'),ef:el.querySelector('.ef'),ct:el.querySelector('.ct')};}
 let U={};
-function setUpg(u,key,nm,lvv,ef){const n=wantN(key),c=n>0?sumCost(key,curLvl(key),n):cost(key),can=n>0&&G.debris>=c;
+function setUpg(u,key,nm,lvv,ef){const tgt=targetN(key),c=tgt>0?sumCost(key,curLvl(key),tgt):cost(key),can=tgt>0&&G.debris>=c;
   u.el.classList.toggle("cant",!can);u.nm.textContent=nm;
-  u.lv.textContent=t("up_level")+" "+lvv+(G.buyMult!=="max"&&G.buyMult>1?" (+"+n+")":G.buyMult==="max"?" (+"+n+")":"");
+  u.lv.textContent=t("up_level")+" "+lvv+(G.buyMult!==1?" (+"+tgt+")":"");
   u.ef.textContent=ef;u.ct.textContent=fmt(c)+" "+t("debris");}
 function buildAch(){const list=document.getElementById("achlist");list.innerHTML="";
   ACH.forEach(a=>{const d=document.createElement("div");d.className="ach";d.id="ach-"+a[0];
@@ -1030,7 +1035,7 @@ function updateHUD(){
     btn.style.background="linear-gradient(90deg,"+fill+" "+pct+"%,"+track+" "+pct+"%)";
     btn.style.borderColor=ready?"var(--violet)":"#9a8fb0";btn.style.color=ready?"var(--violet)":"#7d7290";btn.style.cursor=ready?"pointer":"default";
     btn.innerHTML='<b style="font-size:11px">'+(ready?t("tree_detonate")+" +"+g:t("next_cendre")+" "+Math.floor(ci.prog*100)+"%")+'</b>'+
-      '<small style="display:block;margin-top:3px;font-size:8px;opacity:.85">'+t("cendre_remaining",{r:fmt(Math.ceil(ci.remaining))})+" · "+fmt(G.cendres)+" "+t("cendres")+'</small>';}
+      '<small style="display:block;margin-top:4px;font-family:var(--mono);font-size:13px;opacity:.9">'+t("cendre_remaining",{r:fmt(Math.ceil(ci.remaining))})+" · "+fmt(G.cendres)+" "+t("cendres")+'</small>';}
   else{mys.style.display="block";btn.style.display="none";
     const prog=Math.min(1,G.totalDebris/CFG.X_CENDRE);document.querySelector("#mbar div").style.width=(prog*100).toFixed(1)+"%";}
 }
