@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DÉFLAGRATION</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3e8cf;--paper2:#ecdcbb;--paper3:#e0cca3;--panel:#efe2c4;
+    --ink:#3c2f20;--dim:#8a7350;--line:#caa873;--line2:#a8845a;
+    --terra:#c8643c;--coral:#e08a5a;--red:#cf2f3a;--rose:#d4889a;
+    --gold:#bb8a26;--good:#5e8c3e;--cyan:#2f8f86;--violet:#7a5bc0;
+    --stoneA:#46413a;--stoneB:#3d3833;--pillar:#6b6358;--pillarL:#857c6d;--pillarD:#4a443b;
+    --disp:'Press Start 2P',monospace;--mono:'VT323',monospace;--sh:4px 4px 0 #3c2f2055;
+  }
+  /* repli pour japonais/chinois : les polices pixel n'ont pas les glyphes CJK */
+  body.cjk{--disp:'Hiragino Sans','Yu Gothic','Microsoft YaHei','Noto Sans CJK SC',sans-serif;
+    --mono:'Hiragino Sans','Yu Gothic','Microsoft YaHei','Noto Sans CJK SC',sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--mono);overflow:hidden;image-rendering:pixelated}
+  .btn8{font-family:var(--disp);font-size:9px;letter-spacing:.5px;color:var(--ink);background:var(--paper2);
+    border:3px solid var(--line);box-shadow:var(--sh);padding:9px 11px;cursor:pointer;line-height:1.5}
+  .btn8:hover{border-color:var(--terra)}
+  .btn8:active{transform:translate(3px,3px);box-shadow:0 0 0}
+  .btn8.cant{opacity:.4;cursor:not-allowed}
+  #app{display:flex;flex-direction:column;height:100vh;width:100vw;position:relative;background:var(--paper)}
+
+  #topbar{display:flex;gap:7px;align-items:stretch;padding:8px 10px;background:var(--paper2);
+    border-bottom:3px solid var(--line);flex-wrap:wrap}
+  .stat{background:var(--panel);border:3px solid var(--line);border-left-width:6px;padding:5px 10px;min-width:104px;box-shadow:var(--sh)}
+  .stat .k{font-family:var(--disp);font-size:7px;color:var(--dim);letter-spacing:.5px}
+  .stat .v{font-size:22px;line-height:1;margin-top:5px;color:var(--ink)}
+  .stat .v small{font-size:13px;color:var(--dim)}
+  .stat.deb{border-left-color:var(--terra)}.stat.deb .v{color:var(--terra)}
+  .stat.dps{border-left-color:var(--good)}.stat.dps .v{color:var(--good)}
+  .stat.pow{border-left-color:var(--red)}.stat.pow .v{color:var(--red)}
+  .stat.raf{border-left-color:var(--coral)}
+  .stat.gri{border-left-color:var(--violet)}
+  .stat.roc{border-left-color:var(--rose)}
+  .stat.not{border-left-color:var(--good)}
+  .stat.cen{border-left-color:var(--gold)}.stat.cen .v{color:var(--gold)}
+
+  /* bande des 30 tiers */
+  #tierwrap{padding:7px 10px;background:var(--paper2);border-bottom:3px solid var(--line)}
+  #tierbox{background:var(--panel);border:3px solid var(--line);box-shadow:var(--sh);padding:5px 7px}
+  #tierbox .hd{font-family:var(--disp);font-size:7px;color:var(--dim);letter-spacing:.5px;margin-bottom:4px;display:flex;justify-content:space-between}
+  #tierstrip{display:block;width:100%;image-rendering:pixelated}
+
+  #main{display:flex;flex:1;min-height:0}
+  #stage{position:relative;flex:1;min-width:0;background:#2c2823;overflow:hidden;cursor:grab}
+  #stage.drag{cursor:grabbing}
+  #game{display:block;image-rendering:pixelated}
+  #minimap{position:absolute;right:10px;bottom:10px;border:3px solid var(--line);background:#2c2823dd;
+    box-shadow:var(--sh);cursor:grab;touch-action:none;display:none}
+  #minimap.drag{cursor:grabbing}
+  #mini{display:block;image-rendering:pixelated}
+  #mini-toggle{position:absolute;width:22px;height:22px;padding:0;border:2px solid var(--line);background:#2c2823ee;
+    color:#e9d9b6;font-family:var(--mono);font-size:18px;line-height:1;cursor:pointer;z-index:2}
+  #mini-toggle:hover{border-color:var(--terra);color:#fff}
+  #mini-pastille{position:absolute;right:10px;bottom:10px;width:38px;height:38px;padding:0;border:3px solid var(--line);
+    background:var(--paper2);box-shadow:var(--sh);font-size:19px;cursor:pointer;display:none;align-items:center;justify-content:center}
+  #mini-pastille:hover{border-color:var(--terra)}
+  #hint{position:absolute;left:10px;bottom:10px;font-size:16px;color:#e0d2b4;background:#2c2823bb;padding:2px 8px;pointer-events:none}
+  #dbg{position:absolute;left:10px;top:10px;font-family:var(--disp);font-size:8px;line-height:1.7;
+    color:#d8c79f;background:#2c2823ee;border:3px solid var(--line);padding:7px 9px;pointer-events:none;white-space:pre}
+  #toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-family:var(--disp);font-size:10px;
+    color:var(--ink);background:var(--paper);border:3px solid var(--terra);box-shadow:var(--sh);padding:10px 16px;
+    opacity:0;transition:opacity .2s;pointer-events:none;text-align:center;line-height:1.6;z-index:20}
+  #toast.show{opacity:1}
+
+  #side{width:312px;background:var(--paper2);border-left:3px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
+  .sect{padding:10px 12px;border-bottom:3px solid var(--line)}
+  .sect h2{font-family:var(--disp);font-size:9px;letter-spacing:1px;margin-bottom:9px;display:flex;justify-content:space-between;color:var(--terra)}
+  .sect.s2 h2{color:var(--cyan)}.sect.s3 h2{color:var(--good)}.sect.s4 h2{color:var(--violet)}.sect.s5 h2{color:var(--gold)}
+  .sect h2 .sub{color:var(--dim);font-size:8px}
+  #buymult{display:flex;gap:5px;margin-bottom:9px}
+  #buymult button{flex:1;font-family:var(--disp);font-size:8px;padding:6px 0;cursor:pointer;background:var(--paper);
+    border:3px solid var(--line);color:var(--dim);box-shadow:2px 2px 0 #3c2f2044}
+  #buymult button.on{border-color:var(--terra);color:var(--terra);background:#f7eed8}
+  .upg{width:100%;text-align:left;background:var(--paper);border:3px solid var(--line);color:var(--ink);
+    font-family:var(--mono);padding:6px 9px;margin-bottom:7px;cursor:pointer;box-shadow:var(--sh)}
+  .upg:hover{border-color:var(--terra)}.upg:active{transform:translate(3px,3px);box-shadow:0 0 0}
+  .upg.cant{opacity:.5;cursor:not-allowed}
+  .upg.raff{border-left:6px solid var(--coral)}
+  .upg .row{display:flex;justify-content:space-between;align-items:baseline}
+  .upg .nm{font-size:18px}.upg .lv{font-family:var(--disp);font-size:7px;color:var(--cyan)}
+  .upg .ef{font-size:14px;color:var(--dim)}.upg .ct{font-size:15px;color:var(--terra)}
+  #achlist{max-height:130px;overflow-y:auto}
+  .ach{font-size:14px;color:var(--dim);padding:2px 0;display:flex;justify-content:space-between}
+  .ach.on{color:var(--good)}.ach .pt{color:var(--gold);font-size:12px}
+  .note{font-size:14px;color:var(--dim);line-height:1.35}
+  .bigbtn{width:100%;font-family:var(--disp);font-size:10px;padding:11px;letter-spacing:.5px;cursor:pointer;
+    border:3px solid;box-shadow:var(--sh)}
+  .bigbtn:active{transform:translate(3px,3px);box-shadow:0 0 0}
+  .bigbtn.prest{background:#efe2f4;border-color:var(--violet);color:var(--violet)}
+  .bigbtn.prest:hover{background:#e8d8f0}
+  .bigbtn small{display:block;font-family:var(--mono);font-size:14px;color:var(--dim);margin-top:6px;letter-spacing:0;line-height:1.3}
+  /* jauge mystère */
+  #mystery{border:3px dashed var(--line2);background:var(--paper);padding:10px;text-align:center}
+  #mystery .q{font-family:var(--disp);font-size:11px;color:var(--dim);letter-spacing:2px}
+  #mystery .ms{font-size:14px;color:var(--dim);margin:7px 0 8px;line-height:1.3}
+  #mbar{height:14px;background:#d8c8a4;border:2px solid var(--line2);overflow:hidden}
+  #mbar div{height:100%;width:0;background:linear-gradient(90deg,var(--coral),var(--terra));transition:width .3s}
+  #cendre-prog{margin-top:10px}
+  #cendre-prog .cplab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  #cendre-prog .cplab span:first-child{font-size:12px;color:var(--dim)}
+  #cendre-prog #cendre-pct{font-family:var(--disp);font-size:9px;color:var(--terra)}
+  #cbar{height:14px;background:#d8c8a4;border:2px solid var(--line2);overflow:hidden}
+  #cbar div{height:100%;width:0;background:linear-gradient(90deg,var(--coral),var(--terra));transition:width .3s}
+  #cendre-prog .cprem{font-size:11px;color:var(--dim);text-align:center;margin-top:4px}
+
+  /* big action red button */
+  .bigbtn.detonate{background:var(--red);border-color:#8a1a22;color:#fff;text-shadow:2px 2px 0 #00000055}
+  .bigbtn.detonate:hover{background:#e23a44}
+  .bigbtn.detonate.cant{opacity:.45;cursor:not-allowed}
+
+  /* ===== ARBRE DE PRESTIGE ===== */
+  #tree{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,#f6ecd6 0%,#e3d2ac 72%);display:none;z-index:30}
+  #tree.show{display:block}
+  #treehead{position:absolute;top:0;left:0;right:0;height:58px;display:flex;align-items:center;gap:12px;padding:0 14px;
+    background:var(--paper2);border-bottom:3px solid var(--line);z-index:5;flex-wrap:wrap}
+  #treehead h1{font-family:var(--disp);font-size:13px;color:var(--violet)}
+  #treehead .cen{font-family:var(--disp);font-size:11px;color:var(--gold)}
+  #treehead .sp{flex:1}
+  #treeview{position:absolute;inset:58px 0 0 0;overflow:hidden;cursor:grab}
+  #treeview.drag{cursor:grabbing}
+  #treeworld{position:absolute;left:0;top:0;width:1240px;height:820px;transform-origin:0 0}
+  #treelines{position:absolute;left:0;top:0}
+  .tnode{position:absolute;width:48px;height:48px;border-radius:50%;border:3px solid var(--line2);
+    background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;
+    box-shadow:3px 3px 0 #3c2f2055;user-select:none;transition:transform .08s}
+  .tnode:hover{transform:scale(1.1)}
+  .tnode.owned{box-shadow:0 0 13px currentColor,3px 3px 0 #3c2f2055}
+  .tnode.avail{border-color:var(--terra)}
+  .tnode.locked{opacity:.34}
+  .tnode.pont{border-radius:9px}
+  .tnode.root{width:64px;height:64px;font-size:30px;border-color:var(--red);color:var(--red);box-shadow:0 0 18px var(--red),3px 3px 0 #3c2f2055}
+  .tnode .badge{position:absolute;bottom:-7px;right:-9px;font-family:var(--disp);font-size:7px;background:var(--ink);
+    border:2px solid currentColor;border-radius:9px;padding:1px 4px;color:#fff}
+  #tip{position:fixed;z-index:50;width:240px;background:var(--paper);border:3px solid var(--line2);box-shadow:5px 5px 0 #3c2f2055;
+    padding:10px;display:none}
+  #tip.show{display:block}
+  #tip h4{font-family:var(--disp);font-size:10px;margin-bottom:5px}
+  #tip .ty{font-family:var(--disp);font-size:6px;color:var(--dim)}
+  #tip .ds{font-size:15px;color:var(--ink);margin:7px 0}
+  #tip .co{font-size:14px;color:var(--gold)}
+  #tip .rq{font-size:13px;color:var(--red)}
+  #tip .buy{margin-top:8px;width:100%;font-family:var(--disp);font-size:9px;padding:8px;cursor:pointer;
+    border:3px solid var(--good);background:#e6efd6;color:var(--good);box-shadow:2px 2px 0 #3c2f2055}
+  #tip .buy.cant{border-color:var(--line2);background:var(--paper2);color:var(--dim);cursor:not-allowed}
+
+  /* ===== MENU ===== */
+  #menu{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 38%,#f7eed7 0%,#dcc8a0 75%)}
+  #menu.hide{display:none}
+  #menu .logo{font-family:var(--disp);font-size:min(8vw,52px);letter-spacing:3px;color:var(--terra);
+    text-shadow:5px 5px 0 #3c2f2033;margin-bottom:12px;text-align:center}
+  #menu .tag{font-family:var(--disp);font-size:10px;color:var(--cyan);margin-bottom:34px;text-align:center;line-height:1.9}
+  #menu .play{font-family:var(--disp);font-size:16px;color:#fff;background:var(--red);border:3px solid #8a1a22;
+    box-shadow:5px 5px 0 #3c2f2055;padding:16px 40px;cursor:pointer;letter-spacing:2px}
+  #menu .play:hover{background:#e23a44}#menu .play:active{transform:translate(4px,4px);box-shadow:1px 1px 0}
+  #menu .sub{font-size:16px;color:var(--dim);margin-top:18px;text-align:center;line-height:1.5}
+  #menu .blink{animation:bk 1s steps(2,start) infinite}@keyframes bk{50%{opacity:.25}}
+  #menubg{position:absolute;inset:0;width:100%;height:100%;opacity:.30;z-index:0;pointer-events:none}
+  #menu>*:not(#menubg){position:relative;z-index:1}
+  #menu #menu-recap{display:none;grid-template-columns:1fr 1fr;gap:6px 26px;margin:-14px 0 26px;
+    background:#ece0c2;border:2px solid #b09a6e;box-shadow:3px 3px 0 #3c2f2033;padding:12px 20px}
+  #menu #menu-recap div{display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:16px;color:var(--dim)}
+  #menu #menu-recap b{color:var(--terra);font-family:var(--disp);font-size:9px}
+  #menu #menu-credits{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:13px;color:#a89a7e}
+
+  /* bouton retour menu en jeu */
+  #ingame-menu{position:absolute;right:10px;top:10px;font-family:var(--disp);font-size:8px;z-index:6}
+  #fxbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;z-index:5;pointer-events:none;max-width:70%}
+  #fxbar .fx{font-family:var(--disp);font-size:8px;padding:5px 8px;background:rgba(60,47,32,.82);border:2px solid #ffcf3a;color:#ffe08a;box-shadow:2px 2px 0 #00000055}
+  #fxbar .fx.filon{border-color:#bf7d2e;color:#f0c98a}
+  /* ===== OPTIONS ===== */
+  #options{position:absolute;inset:0;z-index:45;display:none;background:radial-gradient(circle at 50% 38%,#f7eed7 0%,#dcc8a0 75%);overflow-y:auto}
+  #offpop{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(30,22,12,.55)}
+  #offpop .offbox{background:#f2e7cc;border:3px solid var(--terra);box-shadow:6px 6px 0 #3c2f2055;padding:26px 34px;text-align:center;max-width:340px}
+  #offpop h2{color:var(--terra);margin-bottom:14px}
+  #offpop .offtime{color:var(--dim);font-size:13px;margin-bottom:8px}
+  #offpop .offgain{font-family:var(--disp);font-size:15px;color:var(--coral);margin-bottom:20px}
+  #offpop .bigbtn{width:auto;padding:12px 40px}
+  #options.show{display:block}
+  .optpanel{max-width:560px;margin:0 auto;padding:26px 20px 40px}
+  .optpanel h1{font-family:var(--disp);font-size:18px;color:var(--terra);text-align:center;text-shadow:3px 3px 0 #3c2f2022;margin-bottom:22px}
+  .optsect{background:var(--panel);border:3px solid var(--line);box-shadow:var(--sh);padding:13px 15px;margin-bottom:14px}
+  .optsect h3{font-family:var(--disp);font-size:10px;color:var(--cyan);margin-bottom:12px;letter-spacing:.5px}
+  .optsect h3 .soon{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:0;margin-left:6px}
+  .optsect label{display:flex;align-items:center;gap:10px;font-size:17px;color:var(--ink);margin-bottom:10px}
+  .optsect label.chk{cursor:pointer}
+  .optsect input[type=range]{flex:1;accent-color:var(--terra);height:6px}
+  .optsect input[type=checkbox]{width:18px;height:18px;accent-color:var(--terra)}
+  .optsect .val{min-width:42px;text-align:right;color:var(--terra);font-size:16px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:120px;font-family:var(--disp);font-size:8px;padding:10px 6px;cursor:pointer;
+    background:var(--paper);border:3px solid var(--line);color:var(--dim);box-shadow:2px 2px 0 #3c2f2044}
+  .seg button.on{border-color:var(--terra);color:var(--terra);background:#f7eed8}
+  .opthint{font-size:14px;color:var(--dim);margin-top:9px;line-height:1.35}
+  #opt-langs{display:flex;gap:7px;flex-wrap:wrap}
+  #opt-langs button{font-family:var(--mono);font-size:16px;padding:7px 12px;cursor:pointer;background:var(--paper);
+    border:3px solid var(--line);color:var(--ink);box-shadow:2px 2px 0 #3c2f2044}
+  #opt-langs button.on{border-color:var(--terra);color:var(--terra);background:#f7eed8}
+  #opt-save{width:100%;height:64px;resize:vertical;font-family:var(--mono);font-size:14px;padding:8px;
+    background:var(--paper);border:3px solid var(--line);color:var(--ink);word-break:break-all}
+  .optrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .optrow .btn8{flex:1;min-width:110px;text-align:center}
+  #opt-data-msg{color:var(--good)}
+  #opt-back{margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="stat deb"><div class="k" data-i18n="hud_debris">Débris</div><div class="v" id="s-deb">0</div></div>
+    <div class="stat dps"><div class="k" data-i18n="hud_dps">Débris / sec</div><div class="v" id="s-dps">0</div></div>
+    <div class="stat pow"><div class="k" data-i18n="hud_power">Puissance</div><div class="v" id="s-pow">1</div></div>
+    <div class="stat raf"><div class="k" data-i18n="hud_raff">Raffinage</div><div class="v" id="s-raff">1</div></div>
+    <div class="stat gri"><div class="k" data-i18n="hud_grid">Grille</div><div class="v" id="s-grid">13 × 13</div></div>
+    <div class="stat cen"><div class="k" data-i18n="hud_cendres">Cendres · ×prestige</div><div class="v" id="s-cen">0</div></div>
+  </div>
+  <div id="tierwrap">
+    <div id="tierbox">
+      <div class="hd"><span data-i18n="strip_header">RAFFINAGE — 30 TIERS DE ROCHE</span></div>
+      <canvas id="tierstrip" height="116"></canvas>
+    </div>
+  </div>
+  <div id="main">
+    <div id="stage">
+      <canvas id="game"></canvas>
+      <div id="minimap"><canvas id="mini" width="280" height="280"></canvas><button id="mini-toggle" title="Replier (M)">▾</button></div>
+      <button id="mini-pastille" title="Carte (M)">🗺</button>
+      <div id="hint">glisser / ZQSD : caméra · clic roche dorée · I : debug</div>
+      <button id="ingame-menu" class="btn8">☰ MENU</button>
+      <div id="fxbar"></div>
+      <div id="dbg"></div>
+      <div id="toast"></div>
+
+      <div id="tree">
+        <div id="treehead">
+          <h1 data-i18n="open_tree">ARBRE DE PRESTIGE</h1>
+          <span class="cen" id="tree-cen">0 cendres</span>
+          <span class="sp"></span>
+          <button class="btn8" id="tree-respec" data-i18n="tree_respec">RESPEC</button>
+          <button class="btn8" id="tree-close" data-i18n="tree_close">FERMER</button>
+        </div>
+        <div id="treeview"><div id="treeworld"><svg id="treelines" width="1240" height="820"></svg></div></div>
+        <div id="tip"></div>
+      </div>
+
+      <div id="menu">
+        <canvas id="menubg"></canvas>
+        <div class="logo">DÉFLAGRATION</div>
+        <div class="tag" data-i18n="menu_tag">IDLE · 8-BIT · BOMBES · ROCHES</div>
+        <div id="menu-recap"></div>
+        <button class="play" id="play">JOUER</button>
+        <button class="btn8" id="menu-options" data-i18n="menu_options" style="margin-top:14px;font-size:11px;padding:12px 30px">OPTIONS</button>
+        <div class="sub" id="menu-sub"><span class="blink" data-i18n="menu_sub">▶ appuie sur JOUER</span></div>
+        <div id="menu-credits"></div>
+      </div>
+
+      <div id="options">
+        <div class="optpanel">
+          <h1 data-i18n="opt_title">OPTIONS</h1>
+          <div class="optsect">
+            <h3>🔊 <span data-i18n="opt_audio">AUDIO</span></h3>
+            <label><span data-i18n="opt_sfx">Bruitages</span> <input type="range" id="opt-sfx" min="0" max="100"><span class="val" id="opt-sfx-v">70%</span></label>
+            <label><span data-i18n="opt_music">Musique</span> <input type="range" id="opt-music" min="0" max="100"><span class="val" id="opt-music-v">50%</span></label>
+            <label class="chk"><input type="checkbox" id="opt-mute"> <span data-i18n="opt_mute">Tout couper</span></label>
+          </div>
+          <div class="optsect">
+            <h3>🌐 <span data-i18n="opt_lang">LANGUE</span></h3>
+            <div id="opt-langs"></div>
+          </div>
+          <div class="optsect">
+            <h3>🎮 <span data-i18n="opt_controls">CONTRÔLES</span></h3>
+            <div class="seg" id="opt-layout">
+              <button data-v="azerty">AZERTY · ZQSD</button><button data-v="qwerty">QWERTY · WASD</button>
+            </div>
+            <p class="opthint" data-i18n="opt_layout_hint">Déplacement de la caméra. Les flèches directionnelles fonctionnent dans les deux cas.</p>
+          </div>
+          <div class="optsect">
+            <h3>✨ <span data-i18n="opt_display">AFFICHAGE</span></h3>
+            <div class="seg" id="opt-fx">
+              <button data-v="high" data-i18n="opt_fx_high">Effets élevés</button><button data-v="low" data-i18n="opt_fx_low">Effets réduits</button>
+            </div>
+            <p class="opthint" data-i18n="opt_fx_hint">« Réduits » diminue particules et halos — utile pour les machines modestes en fin de partie.</p>
+          </div>
+          <div class="optsect">
+            <h3>💾 <span data-i18n="opt_data">DONNÉES</span></h3>
+            <textarea id="opt-save" data-i18n-ph="opt_save_ph" placeholder="Colle ici un code de sauvegarde pour l'importer…" spellcheck="false"></textarea>
+            <div class="optrow">
+              <button class="btn8" id="opt-export" data-i18n="opt_export">EXPORTER</button>
+              <button class="btn8" id="opt-import" data-i18n="opt_import">IMPORTER</button>
+              <button class="btn8" id="opt-reset" data-i18n="opt_reset">RÉINITIALISER</button>
+            </div>
+            <p class="opthint" id="opt-data-msg"></p>
+          </div>
+          <button class="bigbtn" id="opt-validate" data-i18n="opt_validate">VALIDER</button>
+          <p class="opthint" id="opt-msg" style="text-align:center;min-height:1.1em;margin-top:6px"></p>
+          <button class="bigbtn" id="opt-back" data-i18n="opt_back" style="background:var(--paper2);border-color:var(--terra);color:var(--terra)">RETOUR AU MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="side">
+      <div class="sect s1">
+        <h2><span data-i18n="side_upgrades">Améliorations</span></h2>
+        <div id="buymult">
+          <button data-m="1" class="on">×1</button><button data-m="10">×10</button>
+          <button data-m="100">×100</button><button data-m="max">MAX</button>
+        </div>
+        <button class="upg raff" id="u-raff"></button>
+        <div class="note" id="raffnote" data-i18n="raff_desc">Raffine la roche : grille plus grande, PV et valeur plus élevés. Plafond actuel selon ton prestige.</div>
+      </div>
+      <div class="sect s2">
+        <h2 data-i18n="side_bomber">Bomber</h2>
+        <button class="upg" id="u-flamme"></button>
+        <button class="upg" id="u-meche"></button>
+        <button class="upg" id="u-speed"></button>
+        <button class="upg" id="u-puiss"></button>
+      </div>
+      <div class="sect s4">
+        <h2 id="prest-h2" data-i18n="side_prestige" style="display:none">Prestige</h2>
+        <div id="mystery">
+          <div class="q">? ? ?</div>
+          <div class="ms" data-i18n="side_mystery">Quelque chose se prépare dans les profondeurs…</div>
+          <div id="mbar"><div></div></div>
+        </div>
+        <button class="bigbtn prest" id="open-tree" style="display:none"></button>
+        <div id="cendre-prog" style="display:none">
+          <div class="cplab"><span data-i18n="next_cendre">Prochaine cendre</span><span id="cendre-pct">0%</span></div>
+          <div id="cbar"><div></div></div>
+          <div class="cprem" id="cendre-rem"></div>
+        </div>
+      </div>
+      <div class="sect s3">
+        <h2><span data-i18n="side_ach">Achievements</span><span class="sub" id="ach-sum">0/0</span></h2>
+        <div id="achlist"></div>
+      </div>
+      <div class="sect s5">
+        <h2 data-i18n="side_game">Partie</h2>
+        <button class="btn8" id="u-save" style="width:100%;font-size:8px" data-i18n="side_save">SAUVEGARDER</button>
+        <div class="note" id="savenote" data-i18n="side_save_note" style="margin-top:8px">Sauvegarde auto toutes les 15 s.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="offpop">
+  <div class="offbox">
+    <h2 data-i18n="pop_back_title">BON RETOUR</h2>
+    <div class="offtime" id="offpop-time"></div>
+    <div class="offgain" id="offpop-gain"></div>
+    <button class="bigbtn" id="offpop-ok" data-i18n="menu_continue">CONTINUER</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const BUILD="2026-06-29-K";
+/* ============ CONFIG (réglage live) ============ */
+const CFG={
+  G_R:1.05,        // base expo : valeur ET pv des roches par niveau de Raffinage (doux)
+  G_P:1.05,        // base expo : Puissance multiplicative par niveau
+  X_CENDRE:3.0e5,  // seuil de débris cumulés pour la 1ère cendre
+  CENDRE_EXP:0.5,  // exposant de la courbe : cendres = (cumul/X_CENDRE)^EXP (0.5 = racine carrée → Nᵉ cendre à N² × X)
+  K_PREST:0.04,    // +4% production par cendre gagnée (multiplicateur de prestige, façon Cookie Clicker)
+  CAP_BASE:60, CAP_STEP:8,   // cap de Raffinage = min(1000, BASE + STEP*prestiges)
+  MECHE_MUL:0.99, FUSE_BASE:1.6, FUSE_FLOOR:0.30,
+  PLAN_RADIUS:22,  // rayon max de recherche de cible des bombers (cases) — borne le BFS
+  DPS_TAU:2.5,     // constante de lissage du débris/sec affiché (secondes)
+};
+/* ============ DONNÉES ============ */
+const ROCKS=[
+  ["Argile","#7a5c3f"],["Craie","#e6ddc4"],["Talc","#aebfa8"],["Gypse","#d8b98e"],["Sel gemme","#e0c2c4"],["Calcaire","#93a0a6"],
+  ["Schiste","#6f7378"],["Grès","#b08e62"],["Ardoise","#4f5a63"],["Fluorite","#7fae9c"],["Apatite","#6f93c4"],["Obsidienne","#2b2b33"],
+  ["Feldspath","#c9a98c"],["Pyrite","#c9a227"],["Hématite","#8a4a3c"],["Granite","#9a8f93"],["Jade","#3f9d6f"],["Quartz","#dcdbe2"],
+  ["Grenat","#9e2b3a"],["Tourmaline","#2f7d6b"],["Émeraude","#17b85a"],["Topaze","#e0a23c"],["Spinelle","#c0507a"],["Chrysobéryl","#b5c24a"],
+  ["Saphir","#2f5fd0"],["Rubis","#d21f47"],["Moissanite","#7fd9d2"],["Diamant","#bfe9f5"],["Lonsdaléite","#a98fe0"],["Neutronium","#f4f6ff"]
+];
+const NTYPES=30, CELL=32, RS=2, GLIDE=950, OFFLINE_BASE=3600;
+function rockName(i){return t("rock_"+i);}
+
+const ROCK_S=[
+[ "....oooooo","..oohhhhhhoo",".ohhhhhhhhhho",".ohhhhhhhhhhho","ohhhhhhhhhhhhho","ohhccchhhccchho",
+  "ohmmmmmmmmmmmmo","ommmmmmmmmmmmmo","ommmmmcmmmmmmmo","ommmmmcmmmmmsso","osmmmmcmmmmmsso",
+  ".osmmmmmmmmsso",".ossmmmmmssso","..osssmsssso","...osssssso","....oooooo" ],
+[ "....ooooo","..oohhhho",".ohhhhhhho",".ohhhhhhmmo","ohhccchhcmmo","ohmmmcmmcmmo","ommmmcmmmmmo",
+  "ommmccmmmmso","osmmcmmmmsso",".osmmmmmsso",".ossmmmsso","..ossssso","...ooooo" ],
+[ "...oooo","..ohhmmo",".ohhmcmmo",".ohmccmmo","ohmmcmmmso","ohmmmmmsso",".osmmmsso",".ossmsso","..ooooo" ],
+[ "...ooo","..ohmo",".ohmmo....oo",".osmso...ohmo","..ooo....osmo",".........ooo" ]
+];
+const BOMB_A=[".......p",".......o","......oo","....oooooo","...owwwwwwo","..owwwwwwwwo","..owkkwwkkwo",
+  "..owwwwwwwwo","..ogwwwwwwgo","...obbbbbbo","..obdbbbbdbo",".obbbbbbbbbbo",".obbwwbbwwbbo",
+  ".obbbbbbbbbbo","..obboobbo","..offo.offo"];
+const BOMB_B=[".......p",".......o","......oo","....oooooo","...owwwwwwo","..owwwwwwwwo","..owkkwwkkwo",
+  "..owwwwwwwwo","..ogwwwwwwgo","...obbbbbbo","..obdbbbbdbo",".obbbbbbbbbbo",".obbwwbbwwbbo",
+  ".obbbbbbbbbbo","...obbobbo","..offo..offo"];
+const BOMB_PAL={o:"#14141f",w:"#eef0f6",k:"#223052",p:"#ff6fae",f:"#d8d8e2"};
+const SKINS=[
+  {name:"Cobalt",  b:"#3f6ed0",d:"#2b4ea0",g:"#c2c4d6"},
+  {name:"Magma",   b:"#ff5a3d",d:"#b8301a",g:"#ffd0a0"},
+  {name:"Émeraude",b:"#2ecc71",d:"#177a43",g:"#bdf0d0"},
+  {name:"Spectre", b:"#b08cff",d:"#6e54b0",g:"#e2d4ff"},
+];
+
+/* ============ ARBRE DE PRESTIGE (fini, recentré) ============ */
+const ROOTX=620, ROOTY=410;
+const BRANCHES={coeur:"#cf2f3a",arsenal:"#2f8f86",elan:"#5e8c3e",temps:"#7a5bc0",alch:"#bb8a26",style:"#d4889a",pont:"#c8643c"};
+const BR_ANGLE={coeur:90,arsenal:0,elan:-55,temps:-125,alch:180,style:142};
+// type: niv(5 niveaux)/porte(unique)/skin/pont. depth, lane, prereq:[[id,niv]]. ang optionnel (ponts).
+const NODES=[
+  // CŒUR — forme du souffle (PAS de multiplicateur de dégâts : la Puissance multiplicative joue ce rôle)
+  {id:"coeurExp",b:"coeur",type:"niv",name:"node_coeurExp_nm",icon:"🌊",base:2,mul:1.7,max:5,depth:1,lane:0,prereq:[],
+    desc:l=>t("node_coeurExp_desc",{l})},
+  {id:"coeurP1",b:"coeur",type:"porte",name:"node_coeurP1_nm",icon:"🎯",base:12,depth:2,lane:-1,prereq:[["coeurExp",2]],
+    desc:_=>t("node_coeurP1_desc")},
+  {id:"coeurP2",b:"coeur",type:"porte",name:"node_coeurP2_nm",icon:"🎯",base:120,depth:3,lane:-1,prereq:[["coeurP1",1]],
+    desc:_=>t("node_coeurP2_desc")},
+  {id:"coeurP3",b:"coeur",type:"porte",name:"node_coeurP3_nm",icon:"🎯",base:1200,depth:4,lane:0,prereq:[["coeurP2",1]],
+    desc:_=>t("node_coeurP3_desc")},
+  // ARSENAL — bombers
+  {id:"reflex",b:"arsenal",type:"niv",name:"node_reflex_nm",icon:"⚡",base:3,mul:1.7,max:5,depth:1,lane:0,prereq:[],
+    desc:l=>t("node_reflex_desc",{v:(0.3*l).toFixed(1)})},
+  {id:"surch",b:"arsenal",type:"porte",name:"node_surch_nm",icon:"💣",base:15,depth:2,lane:-1,prereq:[["reflex",2]],
+    desc:_=>t("node_surch_desc")},
+  {id:"veloc",b:"arsenal",type:"niv",name:"node_veloc_nm",icon:"💨",base:20,mul:1.7,max:5,depth:2,lane:1,prereq:[["reflex",3]],
+    desc:l=>t("node_veloc_desc",{v:(0.3*l).toFixed(1)})},
+  {id:"surch2",b:"arsenal",type:"porte",name:"node_surch2_nm",icon:"💣",base:400,depth:3,lane:-1,prereq:[["surch",1]],
+    desc:_=>t("node_surch2_desc")},
+  {id:"mechev",b:"arsenal",type:"porte",name:"node_mechev_nm",icon:"🧨",base:300,depth:3,lane:1,prereq:[["veloc",3]],
+    desc:_=>t("node_mechev_desc")},
+  // ÉLAN — démarrage
+  {id:"elan1",b:"elan",type:"niv",name:"node_elan1_nm",icon:"🚀",base:3,mul:1.6,max:5,depth:1,lane:0,prereq:[],
+    desc:l=>t("node_elan1_desc",{s:15*l})},
+  {id:"reprise",b:"elan",type:"niv",name:"node_reprise_nm",icon:"♻",base:12,mul:1.8,max:5,depth:2,lane:0,prereq:[["elan1",2]],
+    desc:l=>t("node_reprise_desc",{p:10*l})},
+  {id:"etincelle",b:"elan",type:"porte",name:"node_etincelle_nm",icon:"✨",base:40,depth:2,lane:1,prereq:[["elan1",3]],
+    desc:_=>t("node_etincelle_desc")},
+  // TEMPORALITÉ — hors-ligne
+  {id:"temp1",b:"temps",type:"niv",name:"node_temp1_nm",icon:"⏳",base:2,mul:1.5,max:5,depth:1,lane:0,prereq:[],
+    desc:l=>t("node_temp1_desc",{h:1+l})},
+  {id:"rendem",b:"temps",type:"niv",name:"node_rendem_nm",icon:"🧺",base:3,mul:1.6,max:5,depth:1,lane:1,prereq:[],
+    desc:l=>t("node_rendem_desc",{p:1+5*l})},
+  {id:"veille",b:"temps",type:"porte",name:"node_veille_nm",icon:"🌙",base:30,depth:2,lane:1,prereq:[["rendem",3]],
+    desc:_=>t("node_veille_desc")},
+  {id:"horloge",b:"temps",type:"porte",name:"node_horloge_nm",icon:"🕰",base:40,depth:2,lane:-1,prereq:[["temp1",3]],
+    desc:_=>t("node_horloge_desc")},
+  // ALCHIMIE — valeur
+  {id:"alch1",b:"alch",type:"niv",name:"node_alch1_nm",icon:"💰",base:3,mul:1.6,max:5,depth:1,lane:0,prereq:[],
+    desc:l=>t("node_alch1_desc",{m:Math.pow(1.25,l).toFixed(2)})},
+  {id:"marche",b:"alch",type:"niv",name:"node_marche_nm",icon:"🕳",base:20,mul:1.7,max:5,depth:1,lane:1,prereq:[],
+    desc:l=>t("node_marche_desc",{m:Math.max(0.55,Math.pow(0.95,l)).toFixed(2)})},
+  {id:"alch2",b:"alch",type:"porte",name:"node_alch2_nm",icon:"🪙",base:18,depth:2,lane:-1,prereq:[["alch1",3]],
+    desc:_=>t("node_alch2_desc")},
+  {id:"veine",b:"alch",type:"niv",name:"node_veine_nm",icon:"⛏",base:60,mul:1.8,max:5,depth:2,lane:1,prereq:[["alch1",4]],
+    desc:l=>t("node_veine_desc",{m:Math.pow(1.4,l).toFixed(2)})},
+  {id:"alch3",b:"alch",type:"porte",name:"node_alch3_nm",icon:"🔥",base:500,depth:3,lane:0,prereq:[["veine",3]],
+    desc:_=>t("node_alch3_desc")},
+  // STYLE — cosmétique
+  {id:"skin1",b:"style",type:"skin",skin:1,name:"node_skin1_nm",icon:"🟥",base:10,depth:1,lane:0,prereq:[],desc:_=>t("node_skin1_desc")},
+  {id:"skin2",b:"style",type:"skin",skin:2,name:"node_skin2_nm",icon:"🟩",base:80,depth:2,lane:-1,prereq:[["skin1",1]],desc:_=>t("node_skin2_desc")},
+  {id:"skin3",b:"style",type:"skin",skin:3,name:"node_skin3_nm",icon:"🟪",base:200,depth:2,lane:1,prereq:[["skin1",1]],desc:_=>t("node_skin3_desc")},
+  // PONTS — bombers (2 ancrés CŒUR, 2 ancrés ALCHIMIE) + bonus de départ
+  {id:"pB2",b:"pont",type:"pont",bomber:1,name:"node_pB2_nm",icon:"🤖",base:8,depth:1.6,ang:45,prereq:[["reflex",5],["coeurExp",5]],
+    desc:_=>t("node_pB2_desc")},
+  {id:"pB3",b:"pont",type:"pont",bomber:1,name:"node_pB3_nm",icon:"🤖",base:60,depth:1.7,ang:200,prereq:[["surch",1],["alch1",5]],
+    desc:_=>t("node_pB3_desc")},
+  {id:"pB4",b:"pont",type:"pont",bomber:1,name:"node_pB4_nm",icon:"🤖",base:900,depth:2.6,ang:65,prereq:[["veloc",5],["coeurP1",1]],
+    desc:_=>t("node_pB4_desc")},
+  {id:"pB5",b:"pont",type:"pont",bomber:1,name:"node_pB5_nm",icon:"🤖",base:6000,depth:2.7,ang:205,prereq:[["surch2",1],["veine",5]],
+    desc:_=>t("node_pB5_desc")},
+  {id:"pProsp",b:"pont",type:"pont",name:"node_pProsp_nm",icon:"🔱",base:120,depth:1.7,ang:-58,prereq:[["alch1",5],["elan1",5]],
+    desc:_=>t("node_pProsp_desc")},
+];
+const NODE=Object.fromEntries(NODES.map(n=>[n.id,n]));
+// Toile d'araignée : 7 rayons (un par famille), anneaux par ordre de coût croissant vers l'extérieur.
+// L'ordre des ids DANS chaque rayon = ordre des anneaux (du centre vers le bord).
+const RAYS=[
+  {b:"coeur",  ang:90,      ids:["coeurExp","coeurP1","coeurP2","coeurP3"]},
+  {b:"arsenal",ang:38.57,   ids:["reflex","surch","veloc","mechev","surch2"]},
+  {b:"pont",   ang:-12.86,  ids:["pB2","pB3","pProsp","pB4","pB5"]},
+  {b:"alch",   ang:-64.29,  ids:["alch1","alch2","marche","veine","alch3"]},
+  {b:"temps",  ang:-115.71, ids:["temp1","rendem","veille","horloge"]},
+  {b:"elan",   ang:-167.14, ids:["elan1","reprise","etincelle"]},
+  {b:"style",  ang:141.43,  ids:["skin1","skin2","skin3"]},
+];
+function layoutTree(){const cx=ROOTX,cy=ROOTY,baseR=90,stepR=70;
+  for(const ray of RAYS){const a=ray.ang*Math.PI/180,dx=Math.cos(a),dy=-Math.sin(a);
+    ray.ids.forEach((id,k)=>{const n=NODE[id];const r=baseR+k*stepR;
+      n.x=cx+dx*r;n.y=cy+dy*r;
+      n.prereq=(k===0)?[]:[[ray.ids[k-1],1]];});}}
+
+/* ============ ÉTAT ============ */
+const G={debris:0,totalDebris:0,cendres:0,cendresEarned:0,raff:1,gridN:13,dps:0,dpsSmooth:0,peakRate:0,_gain:0,_gainFrame:0,_t:0,
+  upg:{flamme:0,meche:0,speed:0,puiss:0},tree:{},cendresSpent:0,buyMult:1,rockCount:0,
+  grid:null,bombers:[],bombs:[],parts:[],flames:[],runStartProsp:0,
+  golden:null,goldT:75,frenzy:0,fxSurch:0,fxEssaim:0,fxPerfo:0,filon:0,cam:{x:0,y:0},keys:{},
+  miniCorner:"br",miniOpen:true,_miniT:0,
+  opt:{sfxVol:0.7,musicVol:0.5,mute:false,lang:"fr",keyLayout:"azerty",effects:"high"},
+  stats:{destroyed:0,golden:0,prestiges:0,maxRaff:1},ach:{},maxTierSeen:0,_huoT:0,_saveT:0,debug:false,_frames:0,started:false};
+
+/* ============ UTILS ============ */
+const rint=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const U_UNITS=["K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc"];
+function fmt(n){if(!isFinite(n))return"∞";n=Math.floor(n);if(n<1000)return""+n;
+  let i=-1,m=n;while(m>=1000&&i<U_UNITS.length-1){m/=1000;i++;}
+  if(m>=1000)return n.toExponential(2).replace("e+","e");
+  return m.toFixed(m<10?2:m<100?1:0)+U_UNITS[i];}
+function fmtPow(n){if(!isFinite(n))return"∞";if(n<1000)return n.toFixed(2);return fmt(n);}
+function shade(hex,amt){let h=hex.replace('#','');let r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  if(amt>0){r+=(255-r)*amt;g+=(255-g)*amt;b+=(255-b)*amt;}else{const f=1+amt;r*=f;g*=f;b*=f;}
+  const t=v=>('0'+Math.round(Math.max(0,Math.min(255,v))).toString(16)).slice(-2);return'#'+t(r)+t(g)+t(b);}
+function rockPal(hex){return{o:shade(hex,-0.55),c:shade(hex,-0.68),s:shade(hex,-0.25),m:hex,h:shade(hex,0.34)};}
+function spriteW(sp){let w=0;for(const r of sp)w=Math.max(w,r.length);return w;}
+
+/* ============ EFFETS DE L'ARBRE ============ */
+function tl(id){return G.tree[id]||0;}
+function owned(id){return (G.tree[id]||0)>0;}
+function treeRange(){return tl("coeurExp");}
+function treePierce(){let p=1;if(owned("coeurP1"))p=2;if(owned("coeurP2"))p=3;if(owned("coeurP3"))p=4;return p;}
+function treeVal(){return Math.pow(1.25,tl("alch1"))*Math.pow(1.4,tl("veine"));}
+function treeSpeed(){return 0.3*(tl("reflex")+tl("veloc"));}
+function treeCost(){return Math.max(0.55,Math.pow(0.95,tl("marche")));}
+function numBombers(){let n=1;for(const nd of NODES)if(nd.bomber&&owned(nd.id))n++;return Math.min(5,n);}
+function bombsPerBomber(){return 1+(owned("surch")?1:0)+(owned("surch2")?1:0)+(G.fxEssaim>0?2:0);}
+function treeMecheVive(){return owned("mechev")?0.85:1;}
+function treeOfflineCap(){return OFFLINE_BASE+tl("temp1")*3600+(owned("horloge")?12*3600:0);}
+function treeOfflineRate(){let r=0.01+0.05*tl("rendem");if(owned("veille"))r=Math.max(r,0.5);return r;}
+function treeHeadStartSec(){return tl("elan1")*15;}
+function treeHeadRaffFrac(){return Math.min(0.85,0.10*tl("reprise"));}
+function treeStartUpg(){return owned("etincelle")?5:0;}
+function treeCendresMult(){return owned("alch3")?1.15:1;}
+function treeGoldFreq(){return owned("alch2")?0.5:1;}
+function treeFrenzyBonus(){return owned("alch2")?5:0;}
+function unlockedSkins(){const r=[0];for(const n of NODES)if(n.type==="skin"&&owned(n.id))r.push(n.skin);return r;}
+
+/* ============ CACHE DE SPRITES ============ */
+function bakeSprite(sp,pal){const fw=16,fh=16,c=document.createElement('canvas');
+  c.width=fw*RS;c.height=fh*RS;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const ox=Math.floor((fw-spriteW(sp))/2),oy=fh-sp.length;
+  for(let y=0;y<sp.length;y++){const row=sp[y];for(let xx=0;xx<row.length;xx++){const col=pal[row[xx]];if(!col)continue;
+    x.fillStyle=col;x.fillRect((ox+xx)*RS,(oy+y)*RS,RS,RS);}}return c;}
+const rockCache={};
+function rockSprite(type,state){const k=type+'_'+state;if(!rockCache[k])rockCache[k]=bakeSprite(ROCK_S[state],rockPal(ROCKS[type][1]));return rockCache[k];}
+const goldCache=[];
+function goldSprite(state){if(!goldCache[state])goldCache[state]=bakeSprite(ROCK_S[state],rockPal('#ffcf3a'));return goldCache[state];}
+const bombCache={};
+function bomberSprite(skin,f){const k=skin+'_'+f;if(!bombCache[k]){const s=SKINS[skin]||SKINS[0];
+  const pal=Object.assign({},BOMB_PAL,{b:s.b,d:s.d,g:s.g});bombCache[k]=bakeSprite(f?BOMB_B:BOMB_A,pal);}return bombCache[k];}
+
+/* ============ GRILLE & ÉCONOMIE (douce, exponentielle) ============ */
+function raffCap(){return Math.min(1000,CFG.CAP_BASE+CFG.CAP_STEP*G.stats.prestiges);}
+function gridSizeFor(raff){let n=Math.round(13+(99-13)*(Math.min(raff,1000)-1)/999);if(n%2===0)n++;return Math.max(13,n);}
+function tierWeights(raff){const p=Math.min(1,(raff-1)/GLIDE),mu=1+(NTYPES-1)*p,sig=0.35+1.4*Math.sin(Math.PI*p);
+  const w=new Array(NTYPES);let tot=0;for(let i=0;i<NTYPES;i++){const v=Math.exp(-((i+1-mu)**2)/(2*sig*sig));w[i]=v;tot+=v;}
+  for(let i=0;i<NTYPES;i++)w[i]/=tot;return w;}
+function pickType(){const w=tierWeights(G.raff);let r=Math.random();for(let i=0;i<NTYPES;i++){r-=w[i];if(r<=0)return i;}return NTYPES-1;}
+function dominantType(){const p=Math.min(1,(G.raff-1)/GLIDE);return Math.min(NTYPES-1,Math.round((NTYPES-1)*p));}
+function raffScale(){return Math.pow(CFG.G_R,G.raff-1);}
+function prestigeMult(){return 1+CFG.K_PREST*G.cendresEarned;}
+function rockHP(t){return Math.max(1,Math.round((1+t*(4/29))*raffScale()));}
+function rockValue(t){return Math.max(1,Math.round(Math.pow(t+1,1.6)*raffScale()*treeVal()*notoMult()*prestigeMult()*G.runStartProsp));}
+function pickFrom(w){let r=Math.random();for(let i=0;i<NTYPES;i++){r-=w[i];if(r<=0)return i;}return NTYPES-1;}
+function newGrid(){const N=G.gridN,g=[],w=tierWeights(G.raff);let rc=0;for(let y=0;y<N;y++){g[y]=[];for(let x=0;x<N;x++){
+  let t=0;if(x===0||y===0||x===N-1||y===N-1)t=1;else if(x%2===0&&y%2===0)t=1;else if(Math.random()<0.45)t=2;
+  const c={t,type:0,hp:0,mhp:0};if(t===2){const ty=pickFrom(w);c.type=ty;c.mhp=c.hp=rockHP(ty);rc++;}g[y][x]=c;}}
+  for(let y=1;y<=3;y++)for(let x=1;x<=3;x++)if((x<=2||y<=2)&&g[y][x].t===2){g[y][x]={t:0,type:0,hp:0,mhp:0};rc--;}
+  G.rockCount=rc;return g;}
+function cell(x,y){if(y<0||x<0||y>=G.gridN||x>=G.gridN)return null;return G.grid[y][x];}
+function isFloor(x,y){const c=cell(x,y);return c&&c.t===0;}
+function adjacentToRock(x,y){return[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const c=cell(x+dx,y+dy);return c&&c.t===2;});}
+function countRocks(){let n=0;for(let y=0;y<G.gridN;y++)for(let x=0;x<G.gridN;x++)if(G.grid[y][x].t===2)n++;return n;}
+function rockState(c){if(c.mhp<=1)return 0;const f=c.hp/c.mhp;return f>0.66?0:f>0.33?1:f>0.15?2:3;}
+function spawnCells(n){const out=[],pref=[[1,1],[2,1],[1,2],[3,1],[1,3],[3,2],[2,3],[3,3]];
+  for(const[x,y]of pref){if(out.length>=n)break;if(isFloor(x,y))out.push([x,y]);}
+  for(let y=1;y<G.gridN-1&&out.length<n;y++)for(let x=1;x<G.gridN-1&&out.length<n;x++)if(isFloor(x,y)&&!out.some(c=>c[0]===x&&c[1]===y))out.push([x,y]);
+  while(out.length<n)out.push([1,1]);return out;}
+function makeBomber(){return{cx:1,cy:1,px:1,py:1,path:null,pi:0,intent:null,face:1,anim:0,frame:0,moving:false};}
+function resetBombers(){const n=numBombers(),cells=spawnCells(n);G.bombers=[];
+  for(let i=0;i<n;i++){const b=makeBomber();b.cx=b.px=cells[i][0];b.cy=b.py=cells[i][1];G.bombers.push(b);}}
+function syncBombers(){const n=numBombers();
+  if(G.bombers.length<n){const cells=spawnCells(n);while(G.bombers.length<n){const c=cells[G.bombers.length]||[1,1];
+    const b=makeBomber();b.cx=b.px=c[0];b.cy=b.py=c[1];G.bombers.push(b);}}
+  else if(G.bombers.length>n)G.bombers.length=n;}
+function respawn(keepBombers){G.gridN=gridSizeFor(G.raff);G.grid=newGrid();G.bombs.length=0;
+  if(keepBombers&&G.bombers&&G.bombers.length){const M=G.gridN-2;
+    const clearRock=(x,y)=>{if(x<1||y<1||x>M||y>M)return;const cc=G.grid[y][x];if(cc&&cc.t===2){G.grid[y][x]={t:0,type:0,hp:0,mhp:0};G.rockCount--;}};
+    for(const b of G.bombers){b.cx=Math.max(1,Math.min(M,b.cx|0));b.cy=Math.max(1,Math.min(M,b.cy|0));
+      b.px=b.cx;b.py=b.cy;b.path=null;b.pi=0;b.intent=null;b.moving=false;
+      // poche libre : case du bomber + 4 voisines cardinales -> jamais emmuré
+      for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)if(Math.abs(dx)+Math.abs(dy)<=2)clearRock(b.cx+dx,b.cy+dy);}
+    syncBombers();}
+  else resetBombers();
+  clampCam();}
+
+/* ============ PATHFINDING ============ */
+function reachField(sx,sy,blocked,maxDist){const N=G.gridN,dist=new Int32Array(N*N).fill(-1),prev=new Int32Array(N*N).fill(-1);
+  const q=[sy*N+sx];dist[sy*N+sx]=0;let h=0;const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(h<q.length){const id=q[h++],x=id%N,y=(id-x)/N;
+    if(maxDist&&dist[id]>=maxDist)continue;
+    for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=N||ny>=N)continue;const nid=ny*N+nx;
+      if(dist[nid]!==-1||!isFloor(nx,ny))continue;if(blocked&&blocked.has(nid))continue;dist[nid]=dist[id]+1;prev[nid]=id;q.push(nid);}}
+  return{dist,prev,order:q};}
+function pathTo(f,sx,sy,id){const path=[],N=G.gridN;let cur=id;while(cur!==-1){const x=cur%N,y=(cur-x)/N;path.push([x,y]);
+  if(x===sx&&y===sy)break;cur=f.prev[cur];}path.reverse();return path;}
+function bfsEscape(sx,sy,danger){const N=G.gridN,seen=new Uint8Array(N*N),prev=new Int32Array(N*N).fill(-1);
+  const q=[sy*N+sx];seen[sy*N+sx]=1;let h=0;const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(h<q.length){const id=q[h++],x=id%N,y=(id-x)/N;if(!danger.has(id)){return pathFromPrev(prev,id,N,sx,sy);}
+    for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=N||ny>=N)continue;const nid=ny*N+nx;
+      if(seen[nid]||!isFloor(nx,ny))continue;seen[nid]=1;prev[nid]=id;q.push(nid);}}return null;}
+function pathFromPrev(prev,id,N,sx,sy){const path=[];let cur=id;while(cur!==-1){const x=cur%N,y=(cur-x)/N;path.push([x,y]);
+  if(x===sx&&y===sy)break;cur=prev[cur];}path.reverse();return path;}
+
+/* ============ STATS / GAINS ============ */
+function notoPoints(){let p=0;for(const id in G.ach)if(G.ach[id])p+=ACH_PTS[id]||0;return p;}
+function notoMult(){return 1+notoPoints()*0.01;}
+function harvestMult(){let m=1;if(G.frenzy>0)m*=7;if(G.fxSurch>0)m*=17;return m;}
+function showOffPop(gain,mins){const p=document.getElementById("offpop");if(!p)return;
+  document.getElementById("offpop-time").textContent=t("pop_back_time",{m:mins});
+  document.getElementById("offpop-gain").textContent="+"+fmt(gain)+" "+t("debris");
+  p.style.display="flex";}
+function gainDebrisRaw(v){G.debris+=v;G.totalDebris+=v;G._gain+=v;G._gainFrame+=v;}
+function gainDebris(v){gainDebrisRaw(v*harvestMult());}
+
+/* ============ BOMBERS ============ */
+function flameRange(){return Math.min(1+G.upg.flamme+treeRange(), G.gridN-2);}
+function flameAtCap(){return 1+G.upg.flamme+treeRange()>=G.gridN-2;}
+function fuseTime(){return Math.max(CFG.FUSE_FLOOR,CFG.FUSE_BASE*Math.pow(CFG.MECHE_MUL,G.upg.meche)*treeMecheVive());}
+function moveSpeed(){return 3+G.upg.speed*0.9+treeSpeed();}
+function power(){return Math.pow(CFG.G_P,G.upg.puiss);}
+function blastCells(cx,cy,range,pierce){const set=[{x:cx,y:cy}];for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){
+  let pierced=0;for(let i=1;i<=range;i++){const x=cx+dx*i,y=cy+dy*i,c=cell(x,y);if(!c||c.t===1)break;set.push({x,y});
+    if(c.t===2){pierced++;if(pierced>=pierce)break;}}}return set;}
+function dangerSet(){const s=new Set();for(const bo of G.bombs)for(const c of blastCells(bo.cx,bo.cy,bo.range,bo.pierce))s.add(c.y*G.gridN+c.x);return s;}
+function ownerBombs(i){let n=0;for(const b of G.bombs)if(b.owner===i)n++;return n;}
+function blastHitsRock(cx,cy){for(const c of blastCells(cx,cy,flameRange(),treePierce())){const cc=cell(c.x,c.y);if(cc&&cc.t===2)return true;}return false;}
+function searchTarget(f,N,rng,prc){let best=-1,bestScore=-1e9;
+  for(const id of f.order){const x=id%N,y=(id-x)/N;let rocks=0,val=0;
+    for(const c of blastCells(x,y,rng,prc)){const cc=cell(c.x,c.y);if(cc&&cc.t===2){rocks++;val+=cc.type+1;}}
+    if(!rocks)continue;const score=rocks*10 - f.dist[id]*0.4 + val*0.05;
+    if(score>bestScore){bestScore=score;best=id;}}
+  return best;}
+function plan(b,i,danger){const N=G.gridN,here=b.cy*N+b.cx;
+  if(danger.has(here)){const p=bfsEscape(b.cx,b.cy,danger);if(p&&p.length>1){b.path=p;b.pi=0;b.intent="flee";}return;}
+  const rng=flameRange(),prc=treePierce();
+  let f=reachField(b.cx,b.cy,danger,CFG.PLAN_RADIUS),best=searchTarget(f,N,rng,prc);
+  if(best<0){f=reachField(b.cx,b.cy,danger,0);best=searchTarget(f,N,rng,prc);}  // repli : plus rien à portée, on cherche loin
+  if(best<0){b.path=null;b.intent=null;return;}
+  b.path=pathTo(f,b.cx,b.cy,best);b.pi=0;b.intent=(ownerBombs(i)<bombsPerBomber())?"bomb":"stage";}
+function bombersTick(dt){syncBombers();const danger=dangerSet();let planBudget=1;
+  for(let i=0;i<G.bombers.length;i++)planBudget=bomberTick(G.bombers[i],i,dt,danger,planBudget);}
+function bomberTick(b,i,dt,danger,planBudget){b.moving=false;
+  if(!b.path&&planBudget>0){plan(b,i,danger);planBudget--;}
+  if(b.path)followPath(b,dt,()=>{const wb=b.intent==="bomb";b.path=null;b.intent=null;
+    if(wb&&ownerBombs(i)<bombsPerBomber()&&blastHitsRock(b.cx,b.cy))placeBomb(b,i);});
+  if(b.moving){b.anim+=dt;if(b.anim>0.16){b.anim=0;b.frame^=1;}}else b.frame=0;
+  return planBudget;}
+function followPath(b,dt,onArrive){
+  if(!isFinite(b.px)||!isFinite(b.py)){b.px=b.cx;b.py=b.cy;}
+  if(dt<=0)return;
+  if(!b.path||b.pi>=b.path.length){onArrive&&onArrive();return;}
+  const[tx,ty]=b.path[b.pi],dx=tx-b.px,dy=ty-b.py,d=Math.hypot(dx,dy),step=moveSpeed()*dt;
+  if(d<=step||d===0){b.px=tx;b.py=ty;b.cx=tx;b.cy=ty;b.pi++;if(b.pi>=b.path.length){b.path=null;onArrive&&onArrive();}}
+  else{b.px+=dx/d*step;b.py+=dy/d*step;b.moving=true;if(Math.abs(dx)>Math.abs(dy))b.face=dx>0?1:-1;}}
+function effPierce(){return G.fxPerfo>0?99:treePierce();}
+function placeBomb(b,i){G.bombs.push({cx:b.cx,cy:b.cy,fuse:fuseTime(),range:flameRange(),pierce:effPierce(),owner:i});}
+
+/* ============ EXPLOSIONS ============ */
+function explode(bomb){const cells=blastCells(bomb.cx,bomb.cy,bomb.range,bomb.pierce);sfx("explosion");
+  for(const{x,y}of cells){G.flames.push({x,y,life:0.34,max:0.34});const c=cell(x,y);
+    if(c&&c.t===2){c.hp-=power();if(c.hp<=0){let val=rockValue(c.type);if(G.filon>0){val*=10;G.filon--;}gainDebris(val);G.stats.destroyed++;G.rockCount--;sfx("break");burstAt(x,y,ROCKS[c.type][1]);
+      G.grid[y][x]={t:0,type:0,hp:0,mhp:0};}}}
+  const i=G.bombs.indexOf(bomb);if(i>=0)G.bombs.splice(i,1);}
+function lowFx(){return G.opt.effects==="low";}
+function burstAt(x,y,col){const n=lowFx()?2:6;for(let i=0;i<n;i++)G.parts.push({x:x+0.5,y:y+0.5,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:0.55,max:0.55,col});}
+function partsTick(dt){for(let i=G.parts.length-1;i>=0;i--){const p=G.parts[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.9;p.vy*=0.9;if(p.life<=0)G.parts.splice(i,1);}
+  for(let i=G.flames.length-1;i>=0;i--){G.flames[i].life-=dt;if(G.flames[i].life<=0)G.flames.splice(i,1);}
+  const cap=lowFx()?180:600;if(G.parts.length>cap)G.parts.splice(0,G.parts.length-cap);}
+
+/* ============ ROCHE DORÉE & PROSPECTEUR ============ */
+function goldTick(dt){if(G.golden){G.golden.t-=dt;if(G.golden.t<=0)G.golden=null;}
+  else{G.goldT-=dt;if(G.goldT<=0){spawnGolden();G.goldT=Math.round(rint(70,160)*treeGoldFreq());}}
+  if(G.frenzy>0)G.frenzy-=dt;if(G.fxSurch>0)G.fxSurch-=dt;if(G.fxEssaim>0)G.fxEssaim-=dt;if(G.fxPerfo>0)G.fxPerfo-=dt;
+  if(G.runStartProsp>1){G._prospT-=dt;if(G._prospT<=0)G.runStartProsp=1;}}
+function spawnGolden(){const o=[];for(let y=0;y<G.gridN;y++)for(let x=0;x<G.gridN;x++)if(G.grid[y][x].t===2)o.push([x,y]);
+  if(!o.length)return;const[x,y]=o[rint(0,o.length-1)];G.golden={x,y,t:7};}
+/* ============ BONUS DE ROCHE DORÉE (surprise au clic, cumul autorisé) ============ */
+const BONUS=[
+  {id:"frenzy",label:"FRÉNÉSIE ×7",     w:345},
+  {id:"essaim",label:"ESSAIM",          w:200},
+  {id:"perfo", label:"PERFORATION",     w:150},
+  {id:"pluie", label:"PLUIE DE DÉBRIS", w:120},
+  {id:"filon", label:"FILON ×10",       w:90},
+  {id:"onde",  label:"ONDE DE CHOC",    w:60},
+  {id:"surch", label:"SURCHAUFFE ×17",  w:30},
+  {id:"super", label:"SUPER FRÉNÉSIE",  w:5},
+];
+const BONUS_TOT=BONUS.reduce((s,b)=>s+b.w,0);
+function pickBonus(){let r=Math.random()*BONUS_TOT;for(const b of BONUS){r-=b.w;if(r<=0)return b;}return BONUS[0];}
+function ondeDeChoc(){let minT=Infinity;
+  for(let y=0;y<G.gridN;y++)for(let x=0;x<G.gridN;x++){const c=G.grid[y][x];if(c.t===2&&c.type<minT)minT=c.type;}
+  if(minT===Infinity)return 0;let n=0;
+  for(let y=0;y<G.gridN;y++)for(let x=0;x<G.gridN;x++){const c=G.grid[y][x];if(c.t===2&&c.type===minT){
+    gainDebris(rockValue(minT));G.stats.destroyed++;G.rockCount--;burstAt(x,y,ROCKS[minT][1]);G.grid[y][x]={t:0,type:0,hp:0,mhp:0};n++;}}
+  if(G.rockCount<=0)respawn(true);return n;}
+function applyBonus(id){const D=G.dps||0;
+  switch(id){
+    case"frenzy": G.frenzy=Math.max(G.frenzy,15+treeFrenzyBonus()); return t("bonus_frenzy");
+    case"surch":  G.fxSurch=Math.max(G.fxSurch,6);  return t("bonus_surch");
+    case"essaim": G.fxEssaim=Math.max(G.fxEssaim,12);return t("bonus_essaim");
+    case"perfo":  G.fxPerfo=Math.max(G.fxPerfo,10);  return t("bonus_perfo");
+    case"pluie":  {const g=Math.max(20,D*30);gainDebrisRaw(g);return t("bonus_pluie",{g:fmt(g)});}
+    case"filon":  G.filon=Math.max(G.filon,12);      return t("bonus_filon");
+    case"onde":   {const n=ondeDeChoc();return n===1?t("bonus_onde_one",{n}):t("bonus_onde_many",{n});}
+    case"super":  {const g=Math.max(100,D*777);gainDebrisRaw(g);return t("bonus_super",{g:fmt(g)});}
+  }
+  return "";}
+function clickGolden(cx,cy){if(G.golden&&G.golden.x===cx&&G.golden.y===cy){
+  G.golden=null;G.stats.golden++;const b=pickBonus();const msg=applyBonus(b.id);
+  sfx(b.id==="super"?"prestige":"golden");toast(msg);}}
+let _fxLast="";
+function updateFxBar(){const el=document.getElementById("fxbar");if(!el)return;
+  let html="";
+  if(G.frenzy>0)html+='<div class="fx">'+t("fx_frenzy",{s:Math.ceil(G.frenzy)})+'</div>';
+  if(G.fxSurch>0)html+='<div class="fx">'+t("fx_surch",{s:Math.ceil(G.fxSurch)})+'</div>';
+  if(G.fxEssaim>0)html+='<div class="fx">'+t("fx_essaim",{s:Math.ceil(G.fxEssaim)})+'</div>';
+  if(G.fxPerfo>0)html+='<div class="fx">'+t("fx_perfo",{s:Math.ceil(G.fxPerfo)})+'</div>';
+  if(G.filon>0)html+='<div class="fx filon">'+t("fx_filon",{n:G.filon})+'</div>';
+  if(html!==_fxLast){_fxLast=html;el.innerHTML=html;}}
+
+/* ============ ACHAT D'AMÉLIORATIONS ============ */
+const COSTS={flamme:[100,1.11],meche:[50,1.11],speed:[45,1.11],puiss:[70,1.09],raff:[35,1.09]};
+function curLvl(k){return k==="raff"?(G.raff-1):G.upg[k];}
+function unitCost(k,lv){const[b,m]=COSTS[k];return Math.max(1,Math.floor(b*Math.pow(m,lv)*treeCost()));}
+function cost(k){return unitCost(k,curLvl(k));}
+function sumCost(k,lv,n){let s=0;for(let i=0;i<n;i++)s+=unitCost(k,lv+i);return s;}
+function maxAffordable(k){let lv=curLvl(k),n=0,spent=0;const cap=(k==="raff")?(raffCap()-1):Infinity;
+  while(n<100000){if(k==="raff"&&lv>=cap)break;const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return{n,spent};}
+function wantN(k){if(G.buyMult==="max")return maxAffordable(k).n;
+  let target=Math.min(G.buyMult,(k==="raff")?Math.max(0,(raffCap()-1)-curLvl(k)):Infinity);
+  let lv=curLvl(k),spent=0,n=0;for(let i=0;i<target;i++){const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return n;}
+function buy(k){if(k==="flamme"&&flameAtCap())return;const n=wantN(k);if(n<1)return;const s=sumCost(k,curLvl(k),n);if(s>G.debris)return;G.debris-=s;sfx("buy");
+  if(k==="raff"){G.raff+=n;if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;}else G.upg[k]+=n;}
+
+/* ============ PRESTIGE ============ */
+function totalEarnable(){return Math.floor(Math.pow(Math.max(0,G.totalDebris)/CFG.X_CENDRE,CFG.CENDRE_EXP)*treeCendresMult());}
+function nextCendreInfo(){const X=CFG.X_CENDRE,a=CFG.CENDRE_EXP,mult=treeCendresMult(),D=Math.max(0,G.totalDebris),cur=totalEarnable();
+  const lo=X*Math.pow(cur/mult,1/a),hi=X*Math.pow((cur+1)/mult,1/a);
+  const prog=hi>lo?Math.min(1,Math.max(0,(D-lo)/(hi-lo))):0;
+  return{prog,remaining:Math.max(0,hi-D),cur};}
+function prestigeGain(){return Math.max(0,totalEarnable()-G.cendresEarned);}
+function applyRunStart(){const cap=raffCap(),frac=treeHeadRaffFrac();
+  const startR=Math.max(1,Math.floor(cap*frac));
+  G.raff=startR;if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
+  const su=treeStartUpg();
+  G.upg={flamme:su,meche:su,speed:su,puiss:Math.max(0,startR-3)};
+  if(owned("pProsp")){G.runStartProsp=1.25;G._prospT=30;}else{G.runStartProsp=1;G._prospT=0;}}
+function doPrestige(){const gain=prestigeGain();if(gain<1)return;
+  const peak=G.peakRate||0;
+  G.cendres+=gain;G.cendresEarned+=gain;G.stats.prestiges++;
+  G.peakRate=0;G.frenzy=0;G.fxSurch=0;G.fxEssaim=0;G.fxPerfo=0;G.filon=0;G.golden=null;G.goldT=75;G.bombs.length=0;
+  applyRunStart();
+  G.debris=Math.floor(peak*treeHeadStartSec());
+  respawn();sfx("prestige");toast(t("toast_detonation",{n:gain,cap:raffCap()}));refreshTree();}
+
+function nodeCost(n){const lvl=tl(n.id);if(n.type==="niv")return Math.floor(n.base*Math.pow(n.mul,lvl));return n.base;}
+function nodeMax(n){return n.type==="niv"?(n.max||5):1;}
+function prereqOk(n){return n.prereq.every(([id,lv])=>tl(id)>=lv);}
+function canBuy(n){if(!prereqOk(n))return false;if(tl(n.id)>=nodeMax(n))return false;return G.cendres>=nodeCost(n);}
+function buyNode(id){const n=NODE[id];if(!n||!canBuy(n))return;const c=nodeCost(n);
+  G.cendres-=c;G.cendresSpent+=c;G.tree[id]=(G.tree[id]||0)+1;syncBombers();refreshTree();}
+function respec(){G.cendres+=G.cendresSpent;G.cendresSpent=0;G.tree={};syncBombers();refreshTree();toast(t("toast_respec"));}
+
+/* ============ ACHIEVEMENTS ============ */
+const ACH=[
+  ["d1","ach_d1",()=>G.stats.destroyed>=50,1],["d2","ach_d2",()=>G.stats.destroyed>=500,2],
+  ["d3","ach_d3",()=>G.stats.destroyed>=5000,4],["d4","ach_d4",()=>G.stats.destroyed>=50000,7],
+  ["d5","ach_d5",()=>G.stats.destroyed>=500000,12],
+  ["r1","ach_r1",()=>G.stats.maxRaff>=50,1],["r2","ach_r2",()=>G.stats.maxRaff>=150,3],
+  ["r3","ach_r3",()=>G.stats.maxRaff>=400,6],["r4","ach_r4",()=>G.stats.maxRaff>=700,10],
+  ["r5","ach_r5",()=>G.stats.maxRaff>=1000,15],
+  ["g1","ach_g1",()=>G.stats.golden>=1,1],["g2","ach_g2",()=>G.stats.golden>=25,3],
+  ["g3","ach_g3",()=>G.stats.golden>=100,6],
+  ["p1","ach_p1",()=>G.stats.prestiges>=1,2],["p2","ach_p2",()=>G.stats.prestiges>=10,5],
+  ["p3","ach_p3",()=>G.stats.prestiges>=50,10],["p4","ach_p4",()=>NODES.every(n=>tl(n.id)>=nodeMax(n)),20],
+];
+const ACH_PTS={};ACH.forEach(a=>ACH_PTS[a[0]]=a[3]);
+function checkAch(){for(const[id,,cond]of ACH)if(!G.ach[id]&&cond()){G.ach[id]=true;sfx("unlock");toast(t("toast_achievement")+"\n"+t(ACH.find(a=>a[0]===id)[1]));}}
+
+/* ============ SAUVEGARDE / OFFLINE ============ */
+const SKEY="deflagration_save_K";        // clé de stockage FIGÉE — ne jamais la changer
+const SAVE_VERSION=1;                      // version du format de sauvegarde
+// migration : adapte une ancienne sauvegarde au format courant (les simples AJOUTS n'en ont pas besoin
+// grâce aux valeurs par défaut ; ici on placera les conversions le jour d'une refonte des chiffres)
+function migrate(d){let v=d.version||0;
+  // exemple futur : if(v<2){ d.cendres = recalcule(d.cendres); v=2; }
+  d.version=SAVE_VERSION;return d;}
+function save(){try{const d={version:SAVE_VERSION,debris:G.debris,totalDebris:G.totalDebris,cendres:G.cendres,cendresEarned:G.cendresEarned,raff:G.raff,
+  upg:G.upg,tree:G.tree,cendresSpent:G.cendresSpent,peakRate:G.peakRate,miniCorner:G.miniCorner,miniOpen:G.miniOpen,
+  stats:G.stats,ach:G.ach,dps:G.dps,maxTierSeen:G.maxTierSeen,opt:G.opt,ts:Date.now()};localStorage.setItem(SKEY,JSON.stringify(d));
+  document.getElementById("savenote").textContent=t("save_at",{t:new Date().toLocaleTimeString()});}catch(e){}}
+function load(){try{const raw=localStorage.getItem(SKEY);if(!raw)return false;let d=JSON.parse(raw);d=migrate(d);
+  G.debris=d.debris||0;G.totalDebris=d.totalDebris||0;G.cendres=d.cendres||0;G.cendresEarned=d.cendresEarned||0;G.raff=d.raff||1;
+  G.upg=Object.assign({flamme:0,meche:0,speed:0,puiss:0},d.upg||{});
+  G.tree=d.tree||{};G.cendresSpent=d.cendresSpent||0;G.peakRate=d.peakRate||0;
+  G.stats=Object.assign({destroyed:0,golden:0,prestiges:0,maxRaff:1},d.stats||{});
+  G.ach=d.ach||{};G.dps=d.dps||0;G.maxTierSeen=d.maxTierSeen||0;
+  if(d.opt)G.opt=Object.assign(G.opt,d.opt);
+  if(d.miniCorner)G.miniCorner=d.miniCorner;if(typeof d.miniOpen==="boolean")G.miniOpen=d.miniOpen;
+  if(d.ts){const el=Math.min(treeOfflineCap(),(Date.now()-d.ts)/1000);const gain=Math.floor((d.dps||0)*el*treeOfflineRate());
+    if(gain>0){G.debris+=gain;G.totalDebris+=gain;setTimeout(()=>showOffPop(gain,Math.floor(el/60)),600);}}
+  return true;}catch(e){return false;}}
+
+/* ============ AUDIO (Web Audio synthétisé, 8-bit) ============ */
+let actx=null,_master=null,_sfxG=null,_musG=null,_noiseBuf=null,_musTimer=null,_musState=null;
+function audioInit(){try{
+  if(!actx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    actx=new AC();_master=actx.createGain();const comp=actx.createDynamicsCompressor();
+    _master.connect(comp);comp.connect(actx.destination);
+    _sfxG=actx.createGain();_musG=actx.createGain();_sfxG.connect(_master);_musG.connect(_master);
+    _noiseBuf=actx.createBuffer(1,Math.floor(actx.sampleRate*0.4),actx.sampleRate);
+    const ch=_noiseBuf.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;
+    applyVolumes();musicStart();}
+  if(actx.state==="suspended")actx.resume();
+}catch(e){actx=null;}}
+function applyVolumes(){if(!actx)return;try{
+  _master.gain.value=G.opt.mute?0:1;_sfxG.gain.value=G.opt.sfxVol;_musG.gain.value=G.opt.musicVol*0.45;}catch(e){}}
+function mtof(m){return 440*Math.pow(2,(m-69)/12);}
+function _blip(type,freq,t,dur,vol,dest,slideTo){const o=actx.createOscillator(),g=actx.createGain();o.type=type;
+  o.frequency.setValueAtTime(freq,t);if(slideTo)o.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo),t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.006);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(dest||_sfxG);o.start(t);o.stop(t+dur+0.03);}
+function _noise(t,dur,vol,f0,f1,dest){const s=actx.createBufferSource();s.buffer=_noiseBuf;const f=actx.createBiquadFilter();f.type="lowpass";
+  f.frequency.setValueAtTime(f0,t);if(f1)f.frequency.exponentialRampToValueAtTime(Math.max(60,f1),t+dur);
+  const g=actx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f);f.connect(g);g.connect(dest||_sfxG);s.start(t);s.stop(t+dur+0.02);}
+const _sfxT={};
+function _thr(type,gap){const t=performance.now()/1000;if((_sfxT[type]||0)+gap>t)return false;_sfxT[type]=t;return true;}
+function sfx(name){if(!actx||G.opt.mute||G.opt.sfxVol<=0)return;try{const t=actx.currentTime;switch(name){
+  case"explosion":if(!_thr("explosion",0.05))return;{const r=0.9+Math.random()*0.2;
+    _noise(t,0.28*r,0.5,1500,180);_blip("sine",90*r,t,0.22,0.5,_sfxG,40);}break;
+  case"break":if(!_thr("break",0.05))return;{const r=0.85+Math.random()*0.4;
+    _noise(t,0.05,0.20,3000*r,800);_blip("square",520*r,t,0.05,0.10);}break;
+  case"buy":_blip("square",660,t,0.06,0.18);_blip("square",990,t+0.055,0.07,0.18);break;
+  case"golden":[0,4,7,12].forEach((s,i)=>_blip("square",mtof(72+s),t+i*0.05,0.09,0.18));break;
+  case"prestige":_noise(t,0.5,0.4,800,120);_blip("triangle",160,t,0.5,0.4,_sfxG,55);
+    [0,7,12].forEach((s,i)=>_blip("square",mtof(60+s),t+0.06+i*0.07,0.18,0.16));break;
+  case"unlock":if(!_thr("unlock",0.1))return;[0,4,7].forEach((s,i)=>_blip("square",mtof(72+s),t+i*0.06,0.12,0.16));break;
+}}catch(e){}}
+/* musique chiptune générative — entraînante façon Bomberman, 6 ambiances qui alternent sans répétition immédiate */
+const SCALES={major:[0,2,4,5,7,9,11],mixo:[0,2,4,5,7,9,10],lydian:[0,2,4,6,7,9,11]};
+const TRACKS=[
+ {name:"Mèche courte",bpm:132,root:60,scale:"major",chords:[0,4,5,3]},
+ {name:"Cavernes",bpm:122,root:57,scale:"mixo",chords:[0,3,4,0]},
+ {name:"Course aux débris",bpm:146,root:62,scale:"major",chords:[0,5,3,4]},
+ {name:"Profondeurs",bpm:114,root:55,scale:"mixo",chords:[0,2,5,4]},
+ {name:"Frénésie",bpm:152,root:64,scale:"lydian",chords:[0,4,5,1]},
+ {name:"Détonation",bpm:128,root:59,scale:"major",chords:[0,5,4,3]},
+];
+const BARS_PER_TRACK=32;
+function musicStart(){if(_musTimer)return;
+  _musState={ti:Math.floor(Math.random()*TRACKS.length),step:0,bar:0,next:actx.currentTime+0.1,leadIdx:0};
+  _musTimer=setInterval(musicSched,25);}
+function pickNextTrack(){let n;do{n=Math.floor(Math.random()*TRACKS.length);}while(TRACKS.length>1&&n===_musState.ti);_musState.ti=n;}
+function musicSched(){if(!actx||!_musState)return;try{const tr=TRACKS[_musState.ti],sec16=(60/tr.bpm)/4;
+  while(_musState.next<actx.currentTime+0.13){
+    if(!G.opt.mute&&G.opt.musicVol>0)musicStep(tr,_musState.step,_musState.next);
+    _musState.next+=sec16;_musState.step++;
+    if(_musState.step>=16){_musState.step=0;_musState.bar++;
+      if(_musState.bar>=BARS_PER_TRACK){_musState.bar=0;
+        try{const g=_musG.gain,n=actx.currentTime;g.cancelScheduledValues(n);g.setValueAtTime(g.value,n);
+          g.linearRampToValueAtTime(0.0001,n+0.4);g.linearRampToValueAtTime(G.opt.musicVol*0.45,n+1.1);}catch(e){}
+        pickNextTrack();_musState.leadIdx=0;}}}
+}catch(e){}}
+function musicStep(tr,step,t){const sc=SCALES[tr.scale],deg=tr.chords[_musState.bar%tr.chords.length],croot=tr.root+sc[deg%7];
+  if(step%8===0)_blip("sine",110,t,0.12,0.45,_musG,45);                 // kick (temps 1 & 3)
+  if(step%8===4)_noise(t,0.13,0.26,4000,1200,_musG);                    // snare (temps 2 & 4)
+  if(step%2===0)_noise(t,0.03,0.05,9000,9000,_musG);                    // charley
+  if(step%4===0)_blip("square",mtof(croot-12),t,0.16,0.20,_musG);       // basse (fondamentale)
+  else if(step%4===2)_blip("square",mtof(croot-12+7),t,0.12,0.16,_musG);// basse (quinte, groove)
+  if(step%2===0&&Math.random()<0.72){                                    // lead
+    if(step%4===0)_musState.leadIdx=deg+[0,2,4][Math.floor(Math.random()*3)];
+    else _musState.leadIdx+=[-2,-1,1,2][Math.floor(Math.random()*4)];
+    const li=((_musState.leadIdx%7)+7)%7,oct=Math.floor(_musState.leadIdx/7);
+    _blip("square",mtof(tr.root+12+sc[li]+12*oct),t,0.13,0.15,_musG);}}
+
+/* ============ RENDU JEU ============ */
+const stage=document.getElementById("stage"),cv=document.getElementById("game"),ctx=cv.getContext("2d");
+const mini=document.getElementById("mini"),mctx=mini.getContext("2d");
+const minimapEl=document.getElementById("minimap"),pastilleEl=document.getElementById("mini-pastille"),miniToggle=document.getElementById("mini-toggle");
+let VW=0,VH=0;
+function resize(){VW=stage.clientWidth;VH=stage.clientHeight;cv.width=VW;cv.height=VH;ctx.imageSmoothingEnabled=false;clampCam();drawStrip();}
+function worldPx(){return G.gridN*CELL;}
+function clampCam(){const wp=worldPx();
+  G.cam.x=wp<=VW?(wp-VW)/2:Math.max(0,Math.min(wp-VW,G.cam.x));
+  G.cam.y=wp<=VH?(wp-VH)/2:Math.max(0,Math.min(wp-VH,G.cam.y));}
+function draw(){ctx.clearRect(0,0,VW,VH);const N=G.gridN,ox=-G.cam.x,oy=-G.cam.y;
+  const x0=Math.max(0,Math.floor(G.cam.x/CELL)),x1=Math.min(N-1,Math.ceil((G.cam.x+VW)/CELL));
+  const y0=Math.max(0,Math.floor(G.cam.y/CELL)),y1=Math.min(N-1,Math.ceil((G.cam.y+VH)/CELL));
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const c=G.grid[y][x],px=ox+x*CELL,py=oy+y*CELL;
+    ctx.fillStyle=((x+y)&1)?"#46413a":"#3d3833";ctx.fillRect(px,py,CELL,CELL);
+    if(c.t===1){ctx.fillStyle="#6b6358";ctx.fillRect(px+2,py+2,CELL-4,CELL-4);
+      ctx.fillStyle="#857c6d";ctx.fillRect(px+2,py+2,CELL-4,4);ctx.fillStyle="#4a443b";ctx.fillRect(px+2,py+CELL-6,CELL-4,4);}
+    else if(c.t===2){ctx.drawImage(rockSprite(c.type,rockState(c)),px,py);}}
+  if(G.golden){const px=ox+G.golden.x*CELL,py=oy+G.golden.y*CELL,pulse=0.5+0.5*Math.sin(performance.now()/120);
+    ctx.drawImage(goldSprite(0),px,py);ctx.strokeStyle="rgba(255,255,255,"+pulse+")";ctx.lineWidth=2;ctx.strokeRect(px+3,py+3,CELL-6,CELL-6);}
+  for(const f of G.flames){const px=ox+f.x*CELL,py=oy+f.y*CELL,a=f.life/f.max,s=CELL*(0.5+0.5*a);
+    const o=(CELL-s)/2;ctx.fillStyle="rgba(255,110,40,"+(a*0.9)+")";ctx.fillRect(px+o,py+o,s,s);
+    ctx.fillStyle="rgba(255,200,80,"+a+")";ctx.fillRect(px+o+s*0.2,py+o+s*0.2,s*0.6,s*0.6);
+    ctx.fillStyle="rgba(255,250,210,"+a+")";ctx.fillRect(px+CELL/2-3,py+CELL/2-3,6,6);}
+  for(const bo of G.bombs){const px=ox+bo.cx*CELL,py=oy+bo.cy*CELL,t=performance.now()/100,r=CELL*0.30*(0.92+0.08*Math.sin(t));
+    ctx.fillStyle="#15151f";ctx.beginPath();ctx.arc(px+CELL/2,py+CELL/2+2,r,0,7);ctx.fill();
+    ctx.fillStyle="#3a3a52";ctx.beginPath();ctx.arc(px+CELL/2-r*0.3,py+CELL/2-r*0.3+2,r*0.28,0,7);ctx.fill();
+    ctx.fillStyle="#5a3a1a";ctx.fillRect(px+CELL/2-1,py+4,2,5);
+    ctx.fillStyle=Math.sin(t*2)>0?"#ffcf3a":"#ff7a3d";ctx.fillRect(px+CELL/2-2,py+1,4,3);}
+  for(const p of G.parts){const px=ox+p.x*CELL,py=oy+p.y*CELL,a=p.life/p.max;
+    ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.fillRect(px-2,py-2,4,4);ctx.globalAlpha=1;}
+  const skins=unlockedSkins();
+  for(let i=0;i<G.bombers.length;i++){const b=G.bombers[i],sk=skins[i%skins.length];
+    const bx=Math.round(ox+b.px*CELL),by=Math.round(oy+b.py*CELL),bob=b.moving?Math.round(Math.sin(performance.now()/90+i)):0;
+    ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(bx+CELL/2,by+CELL-3,CELL*0.30,4,0,0,7);ctx.fill();
+    ctx.drawImage(bomberSprite(sk,b.frame),bx,by+bob);
+    if((G.frenzy>0||G.fxSurch>0)&&!lowFx()){ctx.save();ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/90);ctx.strokeStyle="#ffcf3a";
+      ctx.lineWidth=2;ctx.beginPath();ctx.arc(bx+CELL/2,by+CELL/2+bob,CELL*0.55,0,7);ctx.stroke();ctx.restore();}}
+}
+function miniDiamond(x,y,r,col){mctx.fillStyle=col;mctx.beginPath();mctx.moveTo(x,y-r);mctx.lineTo(x+r,y);mctx.lineTo(x,y+r);mctx.lineTo(x-r,y);mctx.closePath();mctx.fill();}
+function drawMini(){const N=G.gridN,s=mini.width/N,gap=s>2.2?1:0,cs=Math.max(1,s-gap);
+  mctx.clearRect(0,0,mini.width,mini.height);mctx.fillStyle="#2c2823";mctx.fillRect(0,0,mini.width,mini.height);
+  // roches (couleur = tier) + carrelage (interstice sombre) + état de cassage (assombrissement) sur les multi-coups
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const c=G.grid[y][x];
+    if(c.t===1){mctx.fillStyle="#574f44";mctx.fillRect(x*s,y*s,cs,cs);}
+    else if(c.t===2){mctx.fillStyle=ROCKS[c.type][1];mctx.fillRect(x*s,y*s,cs,cs);
+      if(c.mhp>1&&c.hp<c.mhp){mctx.globalAlpha=(1-c.hp/c.mhp)*0.66;mctx.fillStyle="#000";mctx.fillRect(x*s,y*s,cs,cs);mctx.globalAlpha=1;}}}
+  // zone caméra
+  mctx.strokeStyle="#c8643c";mctx.lineWidth=1.5;mctx.strokeRect(G.cam.x/CELL*s,G.cam.y/CELL*s,VW/CELL*s,VH/CELL*s);
+  // roche dorée (losange doré)
+  if(G.golden){const gx=(G.golden.x+0.5)*s,gy=(G.golden.y+0.5)*s;miniDiamond(gx,gy,5,"#1c1916");miniDiamond(gx,gy,3.2,"#ffcf3a");}
+  // bombers : losanges colorés par skin, liseré sombre, au-dessus de tout
+  const skins=unlockedSkins();
+  for(let i=0;i<G.bombers.length;i++){const b=G.bombers[i],bx=(b.px+0.5)*s,by=(b.py+0.5)*s,col=(SKINS[skins[i%skins.length]]||SKINS[0]).b;
+    miniDiamond(bx,by,5.5,"#1c1916");miniDiamond(bx,by,3.6,col);}}
+function updateMini(dt){const overflow=worldPx()>VW+0.5||worldPx()>VH+0.5;
+  const showMap=overflow&&G.miniOpen,showPast=overflow&&!G.miniOpen;
+  const dMap=showMap?"block":"none",dPast=showPast?"flex":"none";
+  if(minimapEl.style.display!==dMap)minimapEl.style.display=dMap;
+  if(pastilleEl.style.display!==dPast)pastilleEl.style.display=dPast;
+  if(showMap){G._miniT+=dt;if(G._miniT>=(lowFx()?0.2:0.1)){G._miniT=0;drawMini();}}
+  return showMap;}
+/* ancrage, glisser-déposer, repli */
+function applyMiniCorner(){const c=G.miniCorner,m=10;
+  for(const el of [minimapEl,pastilleEl]){
+    el.style.left=c[1]==='l'?m+'px':'auto';el.style.right=c[1]==='r'?m+'px':'auto';
+    el.style.top=c[0]==='t'?m+'px':'auto';el.style.bottom=c[0]==='b'?m+'px':'auto';}
+  miniToggle.style.left=c[1]==='l'?'2px':'auto';miniToggle.style.right=c[1]==='r'?'2px':'auto';
+  miniToggle.style.top=c[0]==='t'?'2px':'auto';miniToggle.style.bottom=c[0]==='b'?'2px':'auto';
+  miniToggle.textContent=c[0]==='b'?'▾':'▴';
+  pastilleEl.textContent="🗺";}
+function toggleMini(){G.miniOpen=!G.miniOpen;save();}
+function nearestCorner(cx,cy){const r=stage.getBoundingClientRect();
+  return ((cy-r.top)<r.height/2?'t':'b')+((cx-r.left)<r.width/2?'l':'r');}
+
+/* ============ BANDE DES 30 TIERS ============ */
+const stripCv=document.getElementById("tierstrip"),sctx=stripCv.getContext("2d");
+function drawStrip(){const wrap=document.getElementById("tierbox");if(!wrap)return;
+  const W=wrap.clientWidth-14;if(W<=0)return;stripCv.width=W;const H=stripCv.height;sctx.imageSmoothingEnabled=false;
+  sctx.clearRect(0,0,W,H);const w=tierWeights(G.raff),maxW=Math.max(...w),dom=dominantType();
+  // découverte : le tier le plus haut rendu présent par le Raffinage est mémorisé (définitif)
+  for(let i=NTYPES-1;i>=0;i--){if(w[i]/maxW>0.02){if(i>G.maxTierSeen){G.maxTierSeen=i;if(G.started)sfx("unlock");}break;}}
+  const cw=W/NTYPES,spr=Math.min(28,cw-4);sctx.textAlign="center";
+  for(let i=0;i<NTYPES;i++){const cx=i*cw,present=w[i]/maxW,active=present>0.02,known=i<=G.maxTierSeen;
+    if(i===dom){sctx.fillStyle="#f7eed8";sctx.fillRect(cx+1,0,cw-2,H);sctx.strokeStyle="#c8643c";sctx.lineWidth=2;sctx.strokeRect(cx+1,1,cw-2,H-2);}
+    const sprite=rockSprite(i,0),sx=cx+(cw-spr)/2;
+    sctx.globalAlpha=active?(0.45+0.55*present):(known?0.20:0.12);
+    sctx.drawImage(sprite,0,0,sprite.width,sprite.height,sx,3,spr,spr);sctx.globalAlpha=1;
+    const y1=spr+18,y2=spr+37,y3=spr+56,y4=spr+75;   // nom / % / gain / PV
+    // nom (ou ??? si non découvert), auto-ajusté, agrandi pour la lisibilité
+    const name=known?rockName(i):"? ? ?";const NF="px 'VT323','Hiragino Sans','Yu Gothic','Microsoft YaHei','Noto Sans CJK JP',sans-serif";let fs=15;sctx.font=fs+NF;
+    while(sctx.measureText(name).width>cw-3&&fs>9){fs--;sctx.font=fs+NF;}
+    sctx.fillStyle=active?"#3c2f20":(known?"#a8946f":"#bdab86");sctx.fillText(name,cx+cw/2,y1);
+    // % présence, gain en débris (récompense), PV (résistance) — uniquement sur les tiers présents
+    if(active){const pct=w[i]*100;
+      sctx.font="16px 'VT323',monospace";sctx.fillStyle=(i===dom)?"#c8643c":"#6f5a3a";
+      sctx.fillText((pct>=10?Math.round(pct):pct.toFixed(1))+"%",cx+cw/2,y2);
+      const fit=(txt)=>{let f=16;sctx.font=f+"px 'VT323',monospace";while(sctx.measureText(txt).width>cw-3&&f>10){f--;sctx.font=f+"px 'VT323',monospace";}};
+      const gain=fmt(rockValue(i));fit(gain);sctx.fillStyle="#bf7d2e";sctx.fillText(gain,cx+cw/2,y3);
+      const pv=fmt(rockHP(i));fit(pv);sctx.fillStyle="#b5505a";sctx.fillText(pv,cx+cw/2,y4);}}}
+
+/* ============ HUD ============ */
+function mkUpg(id){const el=document.getElementById(id);
+  el.innerHTML='<div class="row"><span class="nm"></span><span class="lv"></span></div><div class="ef"></div><div class="ct"></div>';
+  return{el,nm:el.querySelector('.nm'),lv:el.querySelector('.lv'),ef:el.querySelector('.ef'),ct:el.querySelector('.ct')};}
+let U={};
+function setUpg(u,key,nm,lvv,ef){const n=wantN(key),c=n>0?sumCost(key,curLvl(key),n):cost(key),can=n>0&&G.debris>=c;
+  u.el.classList.toggle("cant",!can);u.nm.textContent=nm;
+  u.lv.textContent=t("up_level")+" "+lvv+(G.buyMult!=="max"&&G.buyMult>1?" (+"+n+")":G.buyMult==="max"?" (+"+n+")":"");
+  u.ef.textContent=ef;u.ct.textContent=fmt(c)+" "+t("debris");}
+function buildAch(){const list=document.getElementById("achlist");list.innerHTML="";
+  ACH.forEach(a=>{const d=document.createElement("div");d.className="ach";d.id="ach-"+a[0];
+    d.innerHTML='<span>'+t(a[1])+'</span><span class="pt">+'+a[3]+'</span>';list.appendChild(d);});}
+function updateHUD(){
+  document.getElementById("s-deb").textContent=fmt(G.debris);
+  document.getElementById("s-dps").textContent=fmt(G.dpsSmooth);
+  document.getElementById("s-pow").textContent=fmtPow(power());
+  document.getElementById("s-raff").innerHTML=G.raff+' <small>/ '+raffCap()+'</small>';
+  document.getElementById("s-grid").textContent=G.gridN+' × '+G.gridN;
+  document.getElementById("s-cen").innerHTML=fmt(G.cendres)+' <small>×'+prestigeMult().toFixed(2)+'</small>';
+  const atCap=G.raff>=raffCap();
+  setUpg(U.raff,"raff",t("up_raff_nm"),G.raff,atCap?t("up_raff_cap"):t("up_raff_ef",{m:CFG.G_R}));
+  U.raff.el.classList.toggle("cant",atCap||wantN("raff")<1);
+  {const fc=flameAtCap();setUpg(U.flamme,"flamme",t("up_flamme_nm"),G.upg.flamme,fc?t("up_flamme_cap"):t("up_flamme_ef",{n:flameRange()}));U.flamme.el.classList.toggle("cant",fc||wantN("flamme")<1);}
+  setUpg(U.meche,"meche",t("up_meche_nm"),G.upg.meche,t("up_meche_ef",{n:fuseTime().toFixed(2)}));
+  setUpg(U.speed,"speed",t("up_speed_nm"),G.upg.speed,t("up_speed_ef",{n:moveSpeed().toFixed(1)}));
+  setUpg(U.puiss,"puiss",t("up_puiss_nm"),G.upg.puiss,t("up_puiss_ef",{d:fmtPow(power()),p:Math.round((CFG.G_P-1)*100)}));
+  let on=0;for(const[id]of ACH){if(G.ach[id]){on++;document.getElementById("ach-"+id).classList.add("on");}}
+  document.getElementById("ach-sum").textContent=on+"/"+ACH.length+" · ×"+notoMult().toFixed(2);
+  // mystère / prestige
+  const mys=document.getElementById("mystery"),btn=document.getElementById("open-tree"),cp=document.getElementById("cendre-prog");
+  const revealed=G.cendresEarned>0||G.stats.prestiges>0||totalEarnable()>=1;
+  document.getElementById("prest-h2").style.display=revealed?"":"none";
+  cp.style.display="none";
+  if(revealed){mys.style.display="none";btn.style.display="block";
+    const g=prestigeGain(),ci=nextCendreInfo(),pct=Math.min(100,ci.prog*100).toFixed(1),ready=g>=1;
+    const fill=ready?"rgba(155,105,205,.60)":"rgba(120,110,140,.40)",track=ready?"#efe2f4":"#d3cad8";
+    btn.style.background="linear-gradient(90deg,"+fill+" "+pct+"%,"+track+" "+pct+"%)";
+    btn.style.borderColor=ready?"var(--violet)":"#9a8fb0";btn.style.color=ready?"var(--violet)":"#7d7290";btn.style.cursor=ready?"pointer":"default";
+    btn.innerHTML='<b style="font-size:11px">'+(ready?t("tree_detonate")+" +"+g:t("next_cendre")+" "+Math.floor(ci.prog*100)+"%")+'</b>'+
+      '<small style="display:block;margin-top:3px;font-size:8px;opacity:.85">'+t("cendre_remaining",{r:fmt(Math.ceil(ci.remaining))})+" · "+fmt(G.cendres)+" "+t("cendres")+'</small>';}
+  else{mys.style.display="block";btn.style.display="none";
+    const prog=Math.min(1,G.totalDebris/CFG.X_CENDRE);document.querySelector("#mbar div").style.width=(prog*100).toFixed(1)+"%";}
+}
+let toastT=0;function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");toastT=2.6;}
+
+/* ============ OVERLAY ARBRE ============ */
+const treeview=document.getElementById("treeview"),treeworld=document.getElementById("treeworld"),
+      svg=document.getElementById("treelines"),tip=document.getElementById("tip");
+let pan={x:0,y:0},tipPinned=false,tipNode=null;
+function applyPan(){treeworld.style.transform="translate("+pan.x+"px,"+pan.y+"px)";}
+function nodePos(id){if(id==="root")return[ROOTX,ROOTY];const n=NODE[id];return[n.x,n.y];}
+function buildTree(){layoutTree();
+  let lines="";
+  // fils concentriques de la toile (décoratifs) : relient les rayons voisins au même anneau
+  for(let i=0;i<RAYS.length;i++){const r1=RAYS[i],r2=RAYS[(i+1)%RAYS.length],mk=Math.min(r1.ids.length,r2.ids.length);
+    for(let k=0;k<mk;k++){const[x1,y1]=nodePos(r1.ids[k]),[x2,y2]=nodePos(r2.ids[k]);
+      lines+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#3a3757" stroke-width="2" opacity="0.4"/>';}}
+  // rayons : chaque nœud relié à son prérequis (donc vers l'intérieur), ou au centre pour l'anneau 1
+  const seg=(a,bId)=>{const[x1,y1]=nodePos(a),[x2,y2]=nodePos(bId);
+    lines+='<line data-child="'+a+'" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#2c2c52" stroke-width="4"/>';};
+  for(const n of NODES){if(n.prereq.length===0)seg(n.id,"root");else for(const[pid]of n.prereq)seg(n.id,pid);}
+  svg.innerHTML=lines;
+  const root=document.createElement("div");root.className="tnode root";root.style.left=(ROOTX-32)+"px";root.style.top=(ROOTY-32)+"px";
+  root.textContent="✸";root.title=t("tree_root_title");treeworld.appendChild(root);
+  for(const n of NODES){const d=document.createElement("div");d.className="tnode"+(n.type==="pont"?" pont":"");d.id="tn-"+n.id;
+    d.style.left=(n.x-24)+"px";d.style.top=(n.y-24)+"px";d.style.color=BRANCHES[n.b];
+    d.innerHTML=n.icon+'<span class="badge"></span>';d.querySelector(".badge").id="bd-"+n.id;
+    d.addEventListener("mousedown",e=>e.stopPropagation());
+    d.addEventListener("mouseenter",e=>{if(!tipPinned)showTip(n,e);});
+    d.addEventListener("mouseleave",()=>{if(!tipPinned)hideTip();});
+    d.addEventListener("click",e=>{e.stopPropagation();tipPinned=true;tipNode=n;showTip(n,e);});
+    treeworld.appendChild(d);}
+  refreshTree();}
+function showTip(n,e){const lvl=tl(n.id),isNiv=n.type==="niv",mx=nodeMax(n);
+  const lvlTxt=isNiv?t("tip_level",{l:lvl,m:mx}):(lvl>0?t("tip_owned"):t("tip_notowned"));
+  const can=canBuy(n),locked=!prereqOk(n),maxed=lvl>=mx;
+  let req=locked?'<div class="rq">'+t("tip_requires")+n.prereq.map(([id,lv])=>t(NODE[id].name)+(lv>1?" "+lv:"")).join(", ")+'</div>':'';
+  let costTxt=(maxed||locked)?"":'<div class="co">'+fmt(nodeCost(n))+' '+t("cendres")+'</div>';
+  const typ=n.type==="pont"?t("tip_type_pont"):n.type==="niv"?t("tip_type_niv",{m:mx}):n.type==="skin"?t("tip_type_skin"):t("tip_type_porte");
+  tip.innerHTML='<div class="ty" style="color:'+BRANCHES[n.b]+'">'+typ+'</div><h4 style="color:'+BRANCHES[n.b]+'">'+n.icon+' '+t(n.name)+'</h4>'+
+    '<div class="ds">'+n.desc(lvl)+'</div><div class="ty">'+lvlTxt+'</div>'+req+costTxt+
+    (tipPinned?'<button class="buy'+(can?'':' cant')+'" id="tipbuy">'+(can?t("tip_buy"):(maxed?t("tip_max"):t("tip_unavail")))+'</button>':'');
+  tip.classList.add("show");
+  const vw=window.innerWidth,vh=window.innerHeight;let lx=e.clientX+16,ty=e.clientY+16;
+  if(lx+254>vw)lx=e.clientX-256;if(ty+200>vh)ty=vh-210;tip.style.left=lx+"px";tip.style.top=ty+"px";
+  const bb=document.getElementById("tipbuy");if(bb)bb.onclick=()=>{buyNode(n.id);showTip(n,{clientX:lx,clientY:ty});};}
+function hideTip(){tip.classList.remove("show");}
+function refreshTree(){
+  document.getElementById("tree-cen").textContent=fmt(G.cendres)+" "+t("cendres");
+  for(const n of NODES){const d=document.getElementById("tn-"+n.id);if(!d)continue;
+    const lvl=tl(n.id),mx=nodeMax(n),own=lvl>0,locked=!prereqOk(n),can=canBuy(n);
+    d.className="tnode"+(n.type==="pont"?" pont":"")+(locked?" locked":own?" owned":(can?" avail":""));
+    const bd=document.getElementById("bd-"+n.id);
+    if(bd){if(n.type==="niv"&&lvl>0){bd.textContent=lvl;bd.style.display="block";}
+      else if(n.type!=="niv"&&own){bd.textContent="✓";bd.style.display="block";}else bd.style.display="none";}}
+  svg.querySelectorAll("line[data-child]").forEach(ln=>{const id=ln.getAttribute("data-child");
+    ln.setAttribute("stroke",owned(id)?BRANCHES[NODE[id].b]:"#c9b48a");});}
+function openTree(){document.getElementById("tree").classList.add("show");
+  const vw=treeview.clientWidth,vh=treeview.clientHeight;pan.x=Math.min(40,(vw-1240)/2);pan.y=Math.min(20,(vh-820)/2);applyPan();refreshTree();}
+function closeTree(){document.getElementById("tree").classList.remove("show");tipPinned=false;hideTip();}
+
+/* ============ ENTRÉES ============ */
+/* ============ I18N (infrastructure — temps 1 : français) ============ */
+const I18N={fr:{
+  menu_tag:"IDLE · 8-BIT · BOMBES · ROCHES",menu_play:"JOUER",menu_continue:"CONTINUER",menu_options:"OPTIONS",menu_sub:"▶ appuie sur JOUER",
+  recap_prestiges:"Prestiges",recap_cendres:"Cendres",recap_raffmax:"Raffinage max",recap_debris:"Débris cumulés",
+  credits:"version {v} · un jeu de bombes fait main",
+  opt_title:"OPTIONS",opt_audio:"AUDIO",opt_sfx:"Bruitages",opt_music:"Musique",opt_mute:"Tout couper",
+  opt_lang:"LANGUE",opt_controls:"CONTRÔLES",
+  opt_layout_hint:"Déplacement de la caméra. Les flèches directionnelles fonctionnent dans les deux cas.",
+  opt_display:"AFFICHAGE",opt_fx_high:"Effets élevés",opt_fx_low:"Effets réduits",
+  opt_fx_hint:"« Réduits » diminue particules et halos — utile pour les machines modestes en fin de partie.",
+  opt_data:"DONNÉES",opt_save_ph:"Colle ici un code de sauvegarde pour l'importer…",
+  opt_export:"EXPORTER",opt_import:"IMPORTER",opt_reset:"RÉINITIALISER",opt_back:"RETOUR AU MENU",
+  hud_debris:"Débris",hud_dps:"Débris / sec",hud_power:"Puissance",hud_raff:"Raffinage",hud_grid:"Grille",hud_cendres:"Cendres · ×prestige",
+  strip_header:"RAFFINAGE — 30 TIERS DE ROCHE",
+  tree_detonate:"DÉTONER",tree_respec:"RESPEC",tree_close:"FERMER",
+  side_upgrades:"Améliorations",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Achievements",side_game:"Partie",
+  side_save:"SAUVEGARDER",side_save_note:"Sauvegarde auto toutes les 15 s.",
+  side_mystery:"Quelque chose se prépare dans les profondeurs…",
+  raff_desc:"Raffine la roche : grille plus grande, PV et valeur plus élevés. Plafond actuel selon ton prestige.",
+  opt_validate:"VALIDER",opt_saved:"Modifications enregistrées ✓",
+  opt_exported_copied:"Code exporté et copié dans le presse-papier.",opt_exported_manual:"Code exporté — sélectionne-le et copie-le.",
+  opt_paste_first:"Colle d'abord un code dans le champ.",opt_import_ok:"Import réussi — rechargement…",opt_import_bad:"Code invalide — rien n'a été modifié.",
+  up_level:"Niv",debris:"débris",
+  up_raff_nm:"Raffinage",up_raff_ef:"+{m}× valeur & PV",up_raff_cap:"⛔ Cap atteint — détone pour le repousser",
+  up_flamme_nm:"Flamme",up_flamme_ef:"Portée : {n} cases",
+  up_flamme_cap:"⛔ Cap atteint — agrandis la grille",pop_back_title:"BON RETOUR",pop_back_time:"{m} min hors-ligne",
+  up_meche_nm:"Mèche",up_meche_ef:"Délai : {n} s",
+  up_speed_nm:"Vitesse",up_speed_ef:"Vitesse : {n} c/s",
+  up_puiss_nm:"Puissance",up_puiss_ef:"Dégâts {d} /coup (+{p}%/niv)",
+  ach_d1:"Détruire 50 roches",ach_d2:"Détruire 500 roches",ach_d3:"Détruire 5 000 roches",ach_d4:"Détruire 50 000 roches",ach_d5:"Détruire 500 000 roches",
+  ach_r1:"Raffinage 50",ach_r2:"Raffinage 150",ach_r3:"Raffinage 400",ach_r4:"Raffinage 700",ach_r5:"Raffinage 1000",
+  ach_g1:"1 roche dorée",ach_g2:"25 roches dorées",ach_g3:"100 roches dorées",
+  ach_p1:"1er prestige",ach_p2:"10 prestiges",ach_p3:"50 prestiges",ach_p4:"Arbre complété",
+  toast_achievement:"ACHIEVEMENT",toast_respec:"RESPEC\ncendres rendues",
+  toast_detonation:"DÉTONATION\n+{n} cendres · cap raff {cap}",
+  toast_offline:"DE RETOUR\n+{n} débris ({m} min hors-ligne)",
+  toast_notenough:"Pas assez de débris cumulés\npour détoner",
+  dlg_reset:"Effacer DÉFINITIVEMENT ta partie ? Action irréversible.",
+  dlg_respec:"Réinitialiser l'arbre ? Toutes les cendres dépensées sont rendues.",
+  dlg_detonate:"DÉTONER : remet le run à zéro (sauf l'arbre, les cendres et le cumul) pour {n} cendres ? Ton cap de Raffinage montera.",
+  cendres:"cendres",
+  tip_level:"Niveau {l} / {m}",tip_owned:"ACQUIS",tip_notowned:"Non acquis",tip_requires:"Requiert : ",
+  tip_type_pont:"PONT",tip_type_niv:"NŒUD ({m} niv.)",tip_type_skin:"COSMÉTIQUE",tip_type_porte:"PORTE",
+  tip_buy:"ACHETER",tip_max:"MAX",tip_unavail:"INDISPONIBLE",
+  node_coeurExp_nm:"Onde expansive",node_coeurExp_desc:"+1 portée de flamme par niveau (+{l})",
+  node_coeurP1_nm:"Perforation",node_coeurP1_desc:"Le souffle traverse 2 roches par direction",
+  node_coeurP2_nm:"Perforation II",node_coeurP2_desc:"Le souffle traverse 3 roches par direction",
+  node_coeurP3_nm:"Perforation III",node_coeurP3_desc:"Le souffle traverse 4 roches (capstone)",
+  node_reflex_nm:"Réflexes",node_reflex_desc:"+0.3 vitesse de déplacement par niveau (+{v})",
+  node_surch_nm:"Surcharge",node_surch_desc:"+1 bombe simultanée par bomber (→2)",
+  node_veloc_nm:"Vélocité",node_veloc_desc:"+0.3 vitesse de déplacement par niveau (+{v})",
+  node_surch2_nm:"Surcharge II",node_surch2_desc:"+1 bombe simultanée par bomber (→3)",
+  node_mechev_nm:"Mèche vive",node_mechev_desc:"Délai d'explosion ×0.85 (permanent)",
+  node_elan1_nm:"Démarrage à chaud",node_elan1_desc:"Commence chaque run avec {s} s de production de pointe",
+  node_reprise_nm:"Reprise de raffinage",node_reprise_desc:"Démarre les runs à {p}% de ton cap de Raffinage",
+  node_etincelle_nm:"Première étincelle",node_etincelle_desc:"Commence chaque run avec Flamme / Mèche / Vitesse niv. 5",
+  node_temp1_nm:"Mémoire",node_temp1_desc:"+1 h de plafond hors-ligne par niveau ({h} h)",
+  node_rendem_nm:"Glanage",node_rendem_desc:"Rendement hors-ligne {p}% de la production",
+  node_veille_nm:"Veille active",node_veille_desc:"Rendement hors-ligne porté à 50%",
+  node_horloge_nm:"Horloge brisée",node_horloge_desc:"+12 h de plafond hors-ligne (capstone)",
+  node_alch1_nm:"Raffinage subventionné",node_alch1_desc:"×1.25 valeur des roches par niveau (×{m})",
+  node_marche_nm:"Marché noir",node_marche_desc:"−5% coût des améliorations par niveau (×{m})",
+  node_alch2_nm:"Transmutation",node_alch2_desc:"Roche dorée 2× plus fréquente, Frénésie +5 s",
+  node_veine_nm:"Veine mère",node_veine_desc:"×1.4 valeur des roches par niveau (×{m})",
+  node_alch3_nm:"Combustion riche",node_alch3_desc:"+15% de cendres gagnées au prestige",
+  node_skin1_nm:"Skin Magma",node_skin1_desc:"Bombers couleur Magma",
+  node_skin2_nm:"Skin Émeraude",node_skin2_desc:"Bombers couleur Émeraude",
+  node_skin3_nm:"Skin Spectre",node_skin3_desc:"Bombers couleur Spectre",
+  node_pB2_nm:"Bomber II",node_pB2_desc:"Débloque un 2e bomber (pont Réflexes × Onde expansive)",
+  node_pB3_nm:"Bomber III",node_pB3_desc:"Débloque un 3e bomber (pont Surcharge × Subventionné)",
+  node_pB4_nm:"Bomber IV",node_pB4_desc:"Débloque un 4e bomber (pont Vélocité × Perforation)",
+  node_pB5_nm:"Bomber V",node_pB5_desc:"Débloque un 5e bomber (pont Surcharge II × Veine mère)",
+  node_pProsp_nm:"Prospecteur",node_pProsp_desc:"+25% valeur pendant 30 s au début de chaque run",
+  save_at:"Sauvegardé à {t}.",
+  open_tree:"ARBRE DE PRESTIGE",open_tree_sub:"{c} cendres · {b} bomber(s) · détoner +{g}",
+  tree_root_title:"Détonation — source du prestige",
+  bonus_frenzy:"FRÉNÉSIE ×7\nrécolte boostée 15 s",bonus_surch:"SURCHAUFFE ×17\nrécolte survoltée 6 s",
+  bonus_essaim:"ESSAIM\n+2 bombes / bomber · 12 s",bonus_perfo:"PERFORATION TOTALE\nles explosions traversent tout · 10 s",
+  bonus_pluie:"PLUIE DE DÉBRIS\n+{g} débris",bonus_filon:"FILON ×10\n12 prochaines roches en or",
+  bonus_onde_one:"ONDE DE CHOC\n{n} roche pulvérisée",bonus_onde_many:"ONDE DE CHOC\n{n} roches pulvérisées",
+  bonus_super:"✦ SUPER FRÉNÉSIE ×777 ✦\n+{g} débris !",
+  fx_frenzy:"FRÉNÉSIE ×7 {s}s",fx_surch:"SURCHAUFFE ×17 {s}s",fx_essaim:"ESSAIM {s}s",fx_perfo:"PERFORATION {s}s",fx_filon:"FILON ×10 ({n})",
+  next_cendre:"Prochaine cendre",cendre_remaining:"reste {r} débris",
+  rock_0:"Argile",rock_1:"Craie",rock_2:"Talc",rock_3:"Gypse",rock_4:"Sel gemme",rock_5:"Calcaire",rock_6:"Schiste",rock_7:"Grès",rock_8:"Ardoise",rock_9:"Fluorite",
+  rock_10:"Apatite",rock_11:"Obsidienne",rock_12:"Feldspath",rock_13:"Pyrite",rock_14:"Hématite",rock_15:"Granite",rock_16:"Jade",rock_17:"Quartz",rock_18:"Grenat",rock_19:"Tourmaline",
+  rock_20:"Émeraude",rock_21:"Topaze",rock_22:"Spinelle",rock_23:"Chrysobéryl",rock_24:"Saphir",rock_25:"Rubis",rock_26:"Moissanite",rock_27:"Diamant",rock_28:"Lonsdaléite",rock_29:"Neutronium",
+},
+en:{
+  menu_tag:"IDLE · 8-BIT · BOMBS · ROCKS",menu_play:"PLAY",menu_continue:"CONTINUE",menu_options:"OPTIONS",menu_sub:"▶ press PLAY",
+  recap_prestiges:"Prestiges",recap_cendres:"Ashes",recap_raffmax:"Max refining",recap_debris:"Total debris",
+  credits:"version {v} · a handmade bomb game",
+  opt_title:"OPTIONS",opt_audio:"AUDIO",opt_sfx:"Sound effects",opt_music:"Music",opt_mute:"Mute all",
+  opt_lang:"LANGUAGE",opt_controls:"CONTROLS",
+  opt_layout_hint:"Camera movement. The arrow keys work in both cases.",
+  opt_display:"DISPLAY",opt_fx_high:"High effects",opt_fx_low:"Reduced effects",
+  opt_fx_hint:"'Reduced' lowers particles and glows — useful for modest machines in late game.",
+  opt_data:"DATA",opt_save_ph:"Paste a save code here to import it…",
+  opt_export:"EXPORT",opt_import:"IMPORT",opt_reset:"RESET",opt_back:"BACK TO MENU",
+  hud_debris:"Debris",hud_dps:"Debris / sec",hud_power:"Power",hud_raff:"Refining",hud_grid:"Grid",hud_cendres:"Ashes · ×prestige",
+  strip_header:"REFINING — 30 ROCK TIERS",
+  tree_detonate:"DETONATE",tree_respec:"RESPEC",tree_close:"CLOSE",
+  side_upgrades:"Upgrades",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Achievements",side_game:"Game",
+  side_save:"SAVE",side_save_note:"Auto-save every 15 s.",
+  side_mystery:"Something is stirring in the depths…",
+  raff_desc:"Refines the rock: bigger grid, higher HP and value. Current cap depends on your prestige.",
+  opt_validate:"CONFIRM",opt_saved:"Changes saved ✓",
+  opt_exported_copied:"Code exported and copied to clipboard.",opt_exported_manual:"Code exported — select and copy it.",
+  opt_paste_first:"Paste a code in the field first.",opt_import_ok:"Import successful — reloading…",opt_import_bad:"Invalid code — nothing was changed.",
+  up_level:"Lv",debris:"debris",
+  up_raff_nm:"Refining",up_raff_ef:"+{m}× value & HP",up_raff_cap:"⛔ Cap reached — detonate to push it back",
+  up_flamme_nm:"Flame",up_flamme_ef:"Range: {n} cells",
+  up_flamme_cap:"⛔ Cap reached — enlarge the grid",pop_back_title:"WELCOME BACK",pop_back_time:"{m} min offline",
+  up_meche_nm:"Fuse",up_meche_ef:"Delay: {n} s",
+  up_speed_nm:"Speed",up_speed_ef:"Speed: {n} c/s",
+  up_puiss_nm:"Power",up_puiss_ef:"Damage {d} /hit (+{p}%/lv)",
+  ach_d1:"Destroy 50 rocks",ach_d2:"Destroy 500 rocks",ach_d3:"Destroy 5,000 rocks",ach_d4:"Destroy 50,000 rocks",ach_d5:"Destroy 500,000 rocks",
+  ach_r1:"Refining 50",ach_r2:"Refining 150",ach_r3:"Refining 400",ach_r4:"Refining 700",ach_r5:"Refining 1000",
+  ach_g1:"1 golden rock",ach_g2:"25 golden rocks",ach_g3:"100 golden rocks",
+  ach_p1:"1st prestige",ach_p2:"10 prestiges",ach_p3:"50 prestiges",ach_p4:"Tree completed",
+  toast_achievement:"ACHIEVEMENT",toast_respec:"RESPEC\nashes refunded",
+  toast_detonation:"DETONATION\n+{n} ashes · raff cap {cap}",
+  toast_offline:"WELCOME BACK\n+{n} debris ({m} min offline)",
+  toast_notenough:"Not enough total debris\nto detonate",
+  dlg_reset:"PERMANENTLY erase your game? This cannot be undone.",
+  dlg_respec:"Reset the tree? All spent ashes are refunded.",
+  dlg_detonate:"DETONATE: reset the run (except the tree, ashes and total) for {n} ashes? Your Refining cap will rise.",
+  cendres:"ashes",
+  tip_level:"Level {l} / {m}",tip_owned:"OWNED",tip_notowned:"Not owned",tip_requires:"Requires: ",
+  tip_type_pont:"BRIDGE",tip_type_niv:"NODE ({m} lv.)",tip_type_skin:"COSMETIC",tip_type_porte:"GATE",
+  tip_buy:"BUY",tip_max:"MAX",tip_unavail:"UNAVAILABLE",
+  node_coeurExp_nm:"Expansive wave",node_coeurExp_desc:"+1 flame range per level (+{l})",
+  node_coeurP1_nm:"Piercing",node_coeurP1_desc:"The blast passes through 2 rocks per direction",
+  node_coeurP2_nm:"Piercing II",node_coeurP2_desc:"The blast passes through 3 rocks per direction",
+  node_coeurP3_nm:"Piercing III",node_coeurP3_desc:"The blast passes through 4 rocks (capstone)",
+  node_reflex_nm:"Reflexes",node_reflex_desc:"+0.3 movement speed per level (+{v})",
+  node_surch_nm:"Overload",node_surch_desc:"+1 simultaneous bomb per bomber (→2)",
+  node_veloc_nm:"Velocity",node_veloc_desc:"+0.3 movement speed per level (+{v})",
+  node_surch2_nm:"Overload II",node_surch2_desc:"+1 simultaneous bomb per bomber (→3)",
+  node_mechev_nm:"Quick fuse",node_mechev_desc:"Explosion delay ×0.85 (permanent)",
+  node_elan1_nm:"Warm start",node_elan1_desc:"Start each run with {s} s of peak production",
+  node_reprise_nm:"Refining resume",node_reprise_desc:"Start runs at {p}% of your Refining cap",
+  node_etincelle_nm:"First spark",node_etincelle_desc:"Start each run with Flame / Fuse / Speed lv. 5",
+  node_temp1_nm:"Memory",node_temp1_desc:"+1 h offline cap per level ({h} h)",
+  node_rendem_nm:"Gleaning",node_rendem_desc:"Offline yield {p}% of production",
+  node_veille_nm:"Active standby",node_veille_desc:"Offline yield raised to 50%",
+  node_horloge_nm:"Broken clock",node_horloge_desc:"+12 h offline cap (capstone)",
+  node_alch1_nm:"Subsidized refining",node_alch1_desc:"×1.25 rock value per level (×{m})",
+  node_marche_nm:"Black market",node_marche_desc:"−5% upgrade cost per level (×{m})",
+  node_alch2_nm:"Transmutation",node_alch2_desc:"Golden rock 2× more frequent, Frenzy +5 s",
+  node_veine_nm:"Mother lode",node_veine_desc:"×1.4 rock value per level (×{m})",
+  node_alch3_nm:"Rich combustion",node_alch3_desc:"+15% ashes gained on prestige",
+  node_skin1_nm:"Magma skin",node_skin1_desc:"Magma-colored bombers",
+  node_skin2_nm:"Emerald skin",node_skin2_desc:"Emerald-colored bombers",
+  node_skin3_nm:"Spectre skin",node_skin3_desc:"Spectre-colored bombers",
+  node_pB2_nm:"Bomber II",node_pB2_desc:"Unlocks a 2nd bomber (bridge Reflexes × Expansive wave)",
+  node_pB3_nm:"Bomber III",node_pB3_desc:"Unlocks a 3rd bomber (bridge Overload × Subsidized)",
+  node_pB4_nm:"Bomber IV",node_pB4_desc:"Unlocks a 4th bomber (bridge Velocity × Piercing)",
+  node_pB5_nm:"Bomber V",node_pB5_desc:"Unlocks a 5th bomber (bridge Overload II × Mother lode)",
+  node_pProsp_nm:"Prospector",node_pProsp_desc:"+25% value for 30 s at the start of each run",
+  save_at:"Saved at {t}.",
+  open_tree:"PRESTIGE TREE",open_tree_sub:"{c} ashes · {b} bomber(s) · detonate +{g}",
+  tree_root_title:"Detonation — source of prestige",
+  bonus_frenzy:"FRENZY ×7\nharvest boosted 15 s",bonus_surch:"OVERHEAT ×17\nharvest supercharged 6 s",
+  bonus_essaim:"SWARM\n+2 bombs / bomber · 12 s",bonus_perfo:"FULL PIERCING\nblasts pass through everything · 10 s",
+  bonus_pluie:"DEBRIS RAIN\n+{g} debris",bonus_filon:"VEIN ×10\nnext 12 rocks turn to gold",
+  bonus_onde_one:"SHOCKWAVE\n{n} rock pulverized",bonus_onde_many:"SHOCKWAVE\n{n} rocks pulverized",
+  bonus_super:"✦ SUPER FRENZY ×777 ✦\n+{g} debris!",
+  fx_frenzy:"FRENZY ×7 {s}s",fx_surch:"OVERHEAT ×17 {s}s",fx_essaim:"SWARM {s}s",fx_perfo:"PIERCING {s}s",fx_filon:"VEIN ×10 ({n})",
+  next_cendre:"Next ash",cendre_remaining:"{r} debris left",
+  rock_0:"Clay",rock_1:"Chalk",rock_2:"Talc",rock_3:"Gypsum",rock_4:"Rock salt",rock_5:"Limestone",rock_6:"Shale",rock_7:"Sandstone",rock_8:"Slate",rock_9:"Fluorite",
+  rock_10:"Apatite",rock_11:"Obsidian",rock_12:"Feldspar",rock_13:"Pyrite",rock_14:"Hematite",rock_15:"Granite",rock_16:"Jade",rock_17:"Quartz",rock_18:"Garnet",rock_19:"Tourmaline",
+  rock_20:"Emerald",rock_21:"Topaz",rock_22:"Spinel",rock_23:"Chrysoberyl",rock_24:"Sapphire",rock_25:"Ruby",rock_26:"Moissanite",rock_27:"Diamond",rock_28:"Lonsdaleite",rock_29:"Neutronium",
+},
+es:{
+  menu_tag:"IDLE · 8-BIT · BOMBAS · ROCAS",menu_play:"JUGAR",menu_continue:"CONTINUAR",menu_options:"OPCIONES",menu_sub:"▶ pulsa JUGAR",
+  recap_prestiges:"Prestigios",recap_cendres:"Cenizas",recap_raffmax:"Refinado máx.",recap_debris:"Escombros totales",
+  credits:"versión {v} · un juego de bombas hecho a mano",
+  opt_title:"OPCIONES",opt_audio:"AUDIO",opt_sfx:"Efectos",opt_music:"Música",opt_mute:"Silenciar todo",
+  opt_lang:"IDIOMA",opt_controls:"CONTROLES",
+  opt_layout_hint:"Movimiento de cámara. Las flechas de dirección funcionan en ambos casos.",
+  opt_display:"PANTALLA",opt_fx_high:"Efectos altos",opt_fx_low:"Efectos reducidos",
+  opt_fx_hint:"'Reducidos' baja partículas y destellos — útil para equipos modestos al final de la partida.",
+  opt_data:"DATOS",opt_save_ph:"Pega aquí un código de guardado para importarlo…",
+  opt_export:"EXPORTAR",opt_import:"IMPORTAR",opt_reset:"REINICIAR",opt_back:"VOLVER AL MENÚ",
+  hud_debris:"Escombros",hud_dps:"Escombros / seg",hud_power:"Potencia",hud_raff:"Refinado",hud_grid:"Rejilla",hud_cendres:"Cenizas · ×prestigio",
+  strip_header:"REFINADO — 30 NIVELES DE ROCA",
+  tree_detonate:"DETONAR",tree_respec:"REASIGNAR",tree_close:"CERRAR",
+  side_upgrades:"Mejoras",side_bomber:"Bomber",side_prestige:"Prestigio",side_ach:"Logros",side_game:"Partida",
+  side_save:"GUARDAR",side_save_note:"Autoguardado cada 15 s.",
+  side_mystery:"Algo se prepara en las profundidades…",
+  raff_desc:"Refina la roca: rejilla más grande, más PV y valor. El tope actual depende de tu prestigio.",
+  opt_validate:"CONFIRMAR",opt_saved:"Cambios guardados ✓",
+  opt_exported_copied:"Código exportado y copiado al portapapeles.",opt_exported_manual:"Código exportado — selecciónalo y cópialo.",
+  opt_paste_first:"Pega primero un código en el campo.",opt_import_ok:"Importación correcta — recargando…",opt_import_bad:"Código no válido — no se cambió nada.",
+  up_level:"Nv",debris:"escombros",
+  up_raff_nm:"Refinado",up_raff_ef:"+{m}× valor y PV",up_raff_cap:"⛔ Tope alcanzado — detona para subirlo",
+  up_flamme_nm:"Llama",up_flamme_ef:"Alcance: {n} casillas",
+  up_flamme_cap:"⛔ Tope alcanzado — agranda la rejilla",pop_back_title:"BIENVENIDO",pop_back_time:"{m} min sin conexión",
+  up_meche_nm:"Mecha",up_meche_ef:"Retardo: {n} s",
+  up_speed_nm:"Velocidad",up_speed_ef:"Velocidad: {n} c/s",
+  up_puiss_nm:"Potencia",up_puiss_ef:"Daño {d} /golpe (+{p}%/nv)",
+  ach_d1:"Destruir 50 rocas",ach_d2:"Destruir 500 rocas",ach_d3:"Destruir 5.000 rocas",ach_d4:"Destruir 50.000 rocas",ach_d5:"Destruir 500.000 rocas",
+  ach_r1:"Refinado 50",ach_r2:"Refinado 150",ach_r3:"Refinado 400",ach_r4:"Refinado 700",ach_r5:"Refinado 1000",
+  ach_g1:"1 roca dorada",ach_g2:"25 rocas doradas",ach_g3:"100 rocas doradas",
+  ach_p1:"1er prestigio",ach_p2:"10 prestigios",ach_p3:"50 prestigios",ach_p4:"Árbol completado",
+  toast_achievement:"LOGRO",toast_respec:"REASIGNAR\ncenizas devueltas",
+  toast_detonation:"DETONACIÓN\n+{n} cenizas · tope ref. {cap}",
+  toast_offline:"DE VUELTA\n+{n} escombros ({m} min sin conexión)",
+  toast_notenough:"Escombros totales insuficientes\npara detonar",
+  dlg_reset:"¿Borrar tu partida DEFINITIVAMENTE? Acción irreversible.",
+  dlg_respec:"¿Reiniciar el árbol? Se devuelven todas las cenizas gastadas.",
+  dlg_detonate:"¿Detonar por {n} cenizas? Reinicia la run salvo el árbol, las cenizas y el total. Tu tope de Refinado subirá.",
+  cendres:"cenizas",
+  tip_level:"Nivel {l} / {m}",tip_owned:"OBTENIDO",tip_notowned:"No obtenido",tip_requires:"Requiere: ",
+  tip_type_pont:"PUENTE",tip_type_niv:"NODO ({m} nv.)",tip_type_skin:"COSMÉTICO",tip_type_porte:"PUERTA",
+  tip_buy:"COMPRAR",tip_max:"MÁX",tip_unavail:"NO DISPONIBLE",
+  node_coeurExp_nm:"Onda expansiva",node_coeurExp_desc:"+1 alcance de llama por nivel (+{l})",
+  node_coeurP1_nm:"Perforación",node_coeurP1_desc:"La onda atraviesa 2 rocas por dirección",
+  node_coeurP2_nm:"Perforación II",node_coeurP2_desc:"La onda atraviesa 3 rocas por dirección",
+  node_coeurP3_nm:"Perforación III",node_coeurP3_desc:"La onda atraviesa 4 rocas (culminante)",
+  node_reflex_nm:"Reflejos",node_reflex_desc:"+0.3 velocidad de movimiento por nivel (+{v})",
+  node_surch_nm:"Sobrecarga",node_surch_desc:"+1 bomba simultánea por bomber (→2)",
+  node_veloc_nm:"Celeridad",node_veloc_desc:"+0.3 velocidad de movimiento por nivel (+{v})",
+  node_surch2_nm:"Sobrecarga II",node_surch2_desc:"+1 bomba simultánea por bomber (→3)",
+  node_mechev_nm:"Mecha rápida",node_mechev_desc:"Retardo de explosión ×0.85 (permanente)",
+  node_elan1_nm:"Arranque en caliente",node_elan1_desc:"Empieza cada run con {s} s de producción máxima",
+  node_reprise_nm:"Reanudar refinado",node_reprise_desc:"Empieza las runs al {p}% de tu tope de Refinado",
+  node_etincelle_nm:"Primera chispa",node_etincelle_desc:"Empieza cada run con Llama / Mecha / Velocidad nv. 5",
+  node_temp1_nm:"Memoria",node_temp1_desc:"+1 h de tope sin conexión por nivel ({h} h)",
+  node_rendem_nm:"Espigueo",node_rendem_desc:"Rendimiento sin conexión {p}% de la producción",
+  node_veille_nm:"Espera activa",node_veille_desc:"Rendimiento sin conexión al 50%",
+  node_horloge_nm:"Reloj roto",node_horloge_desc:"+12 h de tope sin conexión (culminante)",
+  node_alch1_nm:"Refinado subvencionado",node_alch1_desc:"×1.25 valor de las rocas por nivel (×{m})",
+  node_marche_nm:"Mercado negro",node_marche_desc:"−5% coste de mejoras por nivel (×{m})",
+  node_alch2_nm:"Transmutación",node_alch2_desc:"Roca dorada 2× más frecuente, Frenesí +5 s",
+  node_veine_nm:"Veta madre",node_veine_desc:"×1.4 valor de las rocas por nivel (×{m})",
+  node_alch3_nm:"Combustión rica",node_alch3_desc:"+15% de cenizas ganadas al prestigiar",
+  node_skin1_nm:"Skin Magma",node_skin1_desc:"Bombers color Magma",
+  node_skin2_nm:"Skin Esmeralda",node_skin2_desc:"Bombers color Esmeralda",
+  node_skin3_nm:"Skin Espectro",node_skin3_desc:"Bombers color Espectro",
+  node_pB2_nm:"Bomber II",node_pB2_desc:"Desbloquea un 2º bomber (puente Reflejos × Onda expansiva)",
+  node_pB3_nm:"Bomber III",node_pB3_desc:"Desbloquea un 3er bomber (puente Sobrecarga × Subvencionado)",
+  node_pB4_nm:"Bomber IV",node_pB4_desc:"Desbloquea un 4º bomber (puente Celeridad × Perforación)",
+  node_pB5_nm:"Bomber V",node_pB5_desc:"Desbloquea un 5º bomber (puente Sobrecarga II × Veta madre)",
+  node_pProsp_nm:"Prospector",node_pProsp_desc:"+25% valor durante 30 s al inicio de cada run",
+  save_at:"Guardado a las {t}.",
+  open_tree:"ÁRBOL DE PRESTIGIO",open_tree_sub:"{c} cenizas · {b} bomber(s) · detonar +{g}",
+  tree_root_title:"Detonación — origen del prestigio",
+  bonus_frenzy:"FRENESÍ ×7\ncosecha impulsada 15 s",bonus_surch:"SOBRECALENTAMIENTO ×17\ncosecha sobrecargada 6 s",
+  bonus_essaim:"ENJAMBRE\n+2 bombas / bomber · 12 s",bonus_perfo:"PERFORACIÓN TOTAL\nlas explosiones atraviesan todo · 10 s",
+  bonus_pluie:"LLUVIA DE ESCOMBROS\n+{g} escombros",bonus_filon:"FILÓN ×10\nlas próximas 12 rocas serán de oro",
+  bonus_onde_one:"ONDA DE CHOQUE\n{n} roca pulverizada",bonus_onde_many:"ONDA DE CHOQUE\n{n} rocas pulverizadas",
+  bonus_super:"✦ SÚPER FRENESÍ ×777 ✦\n+{g} escombros!",
+  fx_frenzy:"FRENESÍ ×7 {s}s",fx_surch:"SOBRECAL. ×17 {s}s",fx_essaim:"ENJAMBRE {s}s",fx_perfo:"PERFORACIÓN {s}s",fx_filon:"FILÓN ×10 ({n})",
+  next_cendre:"Próxima ceniza",cendre_remaining:"faltan {r} escombros",
+  rock_0:"Arcilla",rock_1:"Creta",rock_2:"Talco",rock_3:"Yeso",rock_4:"Sal gema",rock_5:"Caliza",rock_6:"Esquisto",rock_7:"Arenisca",rock_8:"Pizarra",rock_9:"Fluorita",
+  rock_10:"Apatito",rock_11:"Obsidiana",rock_12:"Feldespato",rock_13:"Pirita",rock_14:"Hematita",rock_15:"Granito",rock_16:"Jade",rock_17:"Cuarzo",rock_18:"Granate",rock_19:"Turmalina",
+  rock_20:"Esmeralda",rock_21:"Topacio",rock_22:"Espinela",rock_23:"Crisoberilo",rock_24:"Zafiro",rock_25:"Rubí",rock_26:"Moissanita",rock_27:"Diamante",rock_28:"Lonsdaleíta",rock_29:"Neutronio",
+},
+it:{
+  menu_tag:"IDLE · 8-BIT · BOMBE · ROCCE",menu_play:"GIOCA",menu_continue:"CONTINUA",menu_options:"OPZIONI",menu_sub:"▶ premi GIOCA",
+  recap_prestiges:"Prestigi",recap_cendres:"Ceneri",recap_raffmax:"Raffinazione max",recap_debris:"Detriti totali",
+  credits:"versione {v} · un gioco di bombe fatto a mano",
+  opt_title:"OPZIONI",opt_audio:"AUDIO",opt_sfx:"Effetti sonori",opt_music:"Musica",opt_mute:"Muto totale",
+  opt_lang:"LINGUA",opt_controls:"CONTROLLI",
+  opt_layout_hint:"Movimento della telecamera. Le frecce direzionali funzionano in entrambi i casi.",
+  opt_display:"SCHERMO",opt_fx_high:"Effetti alti",opt_fx_low:"Effetti ridotti",
+  opt_fx_hint:"'Ridotti' abbassa particelle e aloni — utile per macchine modeste a fine partita.",
+  opt_data:"DATI",opt_save_ph:"Incolla qui un codice di salvataggio per importarlo…",
+  opt_export:"ESPORTA",opt_import:"IMPORTA",opt_reset:"AZZERA",opt_back:"TORNA AL MENU",
+  hud_debris:"Detriti",hud_dps:"Detriti / sec",hud_power:"Potenza",hud_raff:"Raffinazione",hud_grid:"Griglia",hud_cendres:"Ceneri · ×prestigio",
+  strip_header:"RAFFINAZIONE — 30 LIVELLI DI ROCCIA",
+  tree_detonate:"DETONA",tree_respec:"RIASSEGNA",tree_close:"CHIUDI",
+  side_upgrades:"Potenziamenti",side_bomber:"Bomber",side_prestige:"Prestigio",side_ach:"Obiettivi",side_game:"Partita",
+  side_save:"SALVA",side_save_note:"Salvataggio automatico ogni 15 s.",
+  side_mystery:"Qualcosa si prepara nelle profondità…",
+  raff_desc:"Raffina la roccia: griglia più grande, più PV e valore. Il tetto attuale dipende dal tuo prestigio.",
+  opt_validate:"CONFERMA",opt_saved:"Modifiche salvate ✓",
+  opt_exported_copied:"Codice esportato e copiato negli appunti.",opt_exported_manual:"Codice esportato — selezionalo e copialo.",
+  opt_paste_first:"Incolla prima un codice nel campo.",opt_import_ok:"Importazione riuscita — ricaricamento…",opt_import_bad:"Codice non valido — nulla è stato modificato.",
+  up_level:"Liv",debris:"detriti",
+  up_raff_nm:"Raffinazione",up_raff_ef:"+{m}× valore e PV",up_raff_cap:"⛔ Tetto raggiunto — detona per spingerlo",
+  up_flamme_nm:"Fiamma",up_flamme_ef:"Portata: {n} caselle",
+  up_flamme_cap:"⛔ Tetto raggiunto — ingrandisci la griglia",pop_back_title:"BENTORNATO",pop_back_time:"{m} min offline",
+  up_meche_nm:"Miccia",up_meche_ef:"Ritardo: {n} s",
+  up_speed_nm:"Velocità",up_speed_ef:"Velocità: {n} c/s",
+  up_puiss_nm:"Potenza",up_puiss_ef:"Danno {d} /colpo (+{p}%/liv)",
+  ach_d1:"Distruggi 50 rocce",ach_d2:"Distruggi 500 rocce",ach_d3:"Distruggi 5.000 rocce",ach_d4:"Distruggi 50.000 rocce",ach_d5:"Distruggi 500.000 rocce",
+  ach_r1:"Raffinazione 50",ach_r2:"Raffinazione 150",ach_r3:"Raffinazione 400",ach_r4:"Raffinazione 700",ach_r5:"Raffinazione 1000",
+  ach_g1:"1 roccia dorata",ach_g2:"25 rocce dorate",ach_g3:"100 rocce dorate",
+  ach_p1:"1° prestigio",ach_p2:"10 prestigi",ach_p3:"50 prestigi",ach_p4:"Albero completato",
+  toast_achievement:"OBIETTIVO",toast_respec:"RIASSEGNA\nceneri restituite",
+  toast_detonation:"DETONAZIONE\n+{n} ceneri · tetto raff {cap}",
+  toast_offline:"BENTORNATO\n+{n} detriti ({m} min offline)",
+  toast_notenough:"Detriti totali insufficienti\nper detonare",
+  dlg_reset:"Cancellare DEFINITIVAMENTE la partita? Azione irreversibile.",
+  dlg_respec:"Azzerare l'albero? Tutte le ceneri spese vengono restituite.",
+  dlg_detonate:"DETONA: azzera la run (tranne albero, ceneri e totale) per {n} ceneri? Il tetto di Raffinazione salirà.",
+  cendres:"ceneri",
+  tip_level:"Livello {l} / {m}",tip_owned:"OTTENUTO",tip_notowned:"Non ottenuto",tip_requires:"Richiede: ",
+  tip_type_pont:"PONTE",tip_type_niv:"NODO ({m} liv.)",tip_type_skin:"COSMETICO",tip_type_porte:"PORTA",
+  tip_buy:"COMPRA",tip_max:"MAX",tip_unavail:"NON DISPONIBILE",
+  node_coeurExp_nm:"Onda espansiva",node_coeurExp_desc:"+1 portata della fiamma per livello (+{l})",
+  node_coeurP1_nm:"Perforazione",node_coeurP1_desc:"L'esplosione attraversa 2 rocce per direzione",
+  node_coeurP2_nm:"Perforazione II",node_coeurP2_desc:"L'esplosione attraversa 3 rocce per direzione",
+  node_coeurP3_nm:"Perforazione III",node_coeurP3_desc:"L'esplosione attraversa 4 rocce (culmine)",
+  node_reflex_nm:"Riflessi",node_reflex_desc:"+0.3 velocità di movimento per livello (+{v})",
+  node_surch_nm:"Sovraccarico",node_surch_desc:"+1 bomba simultanea per bomber (→2)",
+  node_veloc_nm:"Celerità",node_veloc_desc:"+0.3 velocità di movimento per livello (+{v})",
+  node_surch2_nm:"Sovraccarico II",node_surch2_desc:"+1 bomba simultanea per bomber (→3)",
+  node_mechev_nm:"Miccia rapida",node_mechev_desc:"Ritardo d'esplosione ×0.85 (permanente)",
+  node_elan1_nm:"Avvio a caldo",node_elan1_desc:"Inizia ogni run con {s} s di produzione di punta",
+  node_reprise_nm:"Ripresa raffinazione",node_reprise_desc:"Inizia le run al {p}% del tuo tetto di Raffinazione",
+  node_etincelle_nm:"Prima scintilla",node_etincelle_desc:"Inizia ogni run con Fiamma / Miccia / Velocità liv. 5",
+  node_temp1_nm:"Memoria",node_temp1_desc:"+1 h di tetto offline per livello ({h} h)",
+  node_rendem_nm:"Spigolatura",node_rendem_desc:"Rendimento offline {p}% della produzione",
+  node_veille_nm:"Standby attivo",node_veille_desc:"Rendimento offline portato al 50%",
+  node_horloge_nm:"Orologio rotto",node_horloge_desc:"+12 h di tetto offline (culmine)",
+  node_alch1_nm:"Raffinazione sovvenzionata",node_alch1_desc:"×1.25 valore delle rocce per livello (×{m})",
+  node_marche_nm:"Mercato nero",node_marche_desc:"−5% costo dei potenziamenti per livello (×{m})",
+  node_alch2_nm:"Trasmutazione",node_alch2_desc:"Roccia dorata 2× più frequente, Frenesia +5 s",
+  node_veine_nm:"Vena madre",node_veine_desc:"×1.4 valore delle rocce per livello (×{m})",
+  node_alch3_nm:"Combustione ricca",node_alch3_desc:"+15% di ceneri guadagnate al prestigio",
+  node_skin1_nm:"Skin Magma",node_skin1_desc:"Bomber colore Magma",
+  node_skin2_nm:"Skin Smeraldo",node_skin2_desc:"Bomber colore Smeraldo",
+  node_skin3_nm:"Skin Spettro",node_skin3_desc:"Bomber colore Spettro",
+  node_pB2_nm:"Bomber II",node_pB2_desc:"Sblocca un 2° bomber (ponte Riflessi × Onda espansiva)",
+  node_pB3_nm:"Bomber III",node_pB3_desc:"Sblocca un 3° bomber (ponte Sovraccarico × Sovvenzionata)",
+  node_pB4_nm:"Bomber IV",node_pB4_desc:"Sblocca un 4° bomber (ponte Celerità × Perforazione)",
+  node_pB5_nm:"Bomber V",node_pB5_desc:"Sblocca un 5° bomber (ponte Sovraccarico II × Vena madre)",
+  node_pProsp_nm:"Prospettore",node_pProsp_desc:"+25% valore per 30 s all'inizio di ogni run",
+  save_at:"Salvato alle {t}.",
+  open_tree:"ALBERO DEL PRESTIGIO",open_tree_sub:"{c} ceneri · {b} bomber · detona +{g}",
+  tree_root_title:"Detonazione — fonte del prestigio",
+  bonus_frenzy:"FRENESIA ×7\nraccolta potenziata 15 s",bonus_surch:"SURRISCALDAMENTO ×17\nraccolta sovralimentata 6 s",
+  bonus_essaim:"SCIAME\n+2 bombe / bomber · 12 s",bonus_perfo:"PERFORAZIONE TOTALE\nle esplosioni attraversano tutto · 10 s",
+  bonus_pluie:"PIOGGIA DI DETRITI\n+{g} detriti",bonus_filon:"FILONE ×10\nle prossime 12 rocce diventano d'oro",
+  bonus_onde_one:"ONDA D'URTO\n{n} roccia polverizzata",bonus_onde_many:"ONDA D'URTO\n{n} rocce polverizzate",
+  bonus_super:"✦ SUPER FRENESIA ×777 ✦\n+{g} detriti!",
+  fx_frenzy:"FRENESIA ×7 {s}s",fx_surch:"SURRISCALD. ×17 {s}s",fx_essaim:"SCIAME {s}s",fx_perfo:"PERFORAZIONE {s}s",fx_filon:"FILONE ×10 ({n})",
+  next_cendre:"Prossima cenere",cendre_remaining:"mancano {r} detriti",
+  rock_0:"Argilla",rock_1:"Creta",rock_2:"Talco",rock_3:"Gesso",rock_4:"Salgemma",rock_5:"Calcare",rock_6:"Scisto",rock_7:"Arenaria",rock_8:"Ardesia",rock_9:"Fluorite",
+  rock_10:"Apatite",rock_11:"Ossidiana",rock_12:"Feldspato",rock_13:"Pirite",rock_14:"Ematite",rock_15:"Granito",rock_16:"Giada",rock_17:"Quarzo",rock_18:"Granato",rock_19:"Tormalina",
+  rock_20:"Smeraldo",rock_21:"Topazio",rock_22:"Spinello",rock_23:"Crisoberillo",rock_24:"Zaffiro",rock_25:"Rubino",rock_26:"Moissanite",rock_27:"Diamante",rock_28:"Lonsdaleite",rock_29:"Neutronio",
+},
+de:{
+  menu_tag:"IDLE · 8-BIT · BOMBEN · FELSEN",menu_play:"SPIELEN",menu_continue:"WEITER",menu_options:"OPTIONEN",menu_sub:"▶ SPIELEN drücken",
+  recap_prestiges:"Prestige",recap_cendres:"Asche",recap_raffmax:"Max. Veredelung",recap_debris:"Schutt gesamt",
+  credits:"Version {v} · ein handgemachtes Bombenspiel",
+  opt_title:"OPTIONEN",opt_audio:"AUDIO",opt_sfx:"Soundeffekte",opt_music:"Musik",opt_mute:"Alles stumm",
+  opt_lang:"SPRACHE",opt_controls:"STEUERUNG",
+  opt_layout_hint:"Kamerabewegung. Die Pfeiltasten funktionieren in beiden Fällen.",
+  opt_display:"ANZEIGE",opt_fx_high:"Hohe Effekte",opt_fx_low:"Reduzierte Effekte",
+  opt_fx_hint:"'Reduziert' senkt Partikel und Glüheffekte — nützlich für schwächere Rechner im Spätspiel.",
+  opt_data:"DATEN",opt_save_ph:"Füge hier einen Speichercode zum Importieren ein…",
+  opt_export:"EXPORT",opt_import:"IMPORT",opt_reset:"ZURÜCKSETZEN",opt_back:"ZURÜCK ZUM MENÜ",
+  hud_debris:"Schutt",hud_dps:"Schutt / Sek",hud_power:"Stärke",hud_raff:"Veredelung",hud_grid:"Gitter",hud_cendres:"Asche · ×Prestige",
+  strip_header:"VEREDELUNG — 30 FELSSTUFEN",
+  tree_detonate:"ZÜNDEN",tree_respec:"RESPEC",tree_close:"SCHLIESSEN",
+  side_upgrades:"Verbesserungen",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Erfolge",side_game:"Spiel",
+  side_save:"SPEICHERN",side_save_note:"Auto-Speichern alle 15 s.",
+  side_mystery:"Etwas regt sich in der Tiefe…",
+  raff_desc:"Veredelt den Felsen: größeres Gitter, höhere LP und Wert. Aktuelle Grenze je nach Prestige.",
+  opt_validate:"BESTÄTIGEN",opt_saved:"Änderungen gespeichert ✓",
+  opt_exported_copied:"Code exportiert und in die Zwischenablage kopiert.",opt_exported_manual:"Code exportiert — markiere und kopiere ihn.",
+  opt_paste_first:"Füge zuerst einen Code in das Feld ein.",opt_import_ok:"Import erfolgreich — wird neu geladen…",opt_import_bad:"Ungültiger Code — nichts wurde geändert.",
+  up_level:"St",debris:"Schutt",
+  up_raff_nm:"Veredelung",up_raff_ef:"+{m}× Wert & LP",up_raff_cap:"⛔ Grenze erreicht — zünde, um sie anzuheben",
+  up_flamme_nm:"Flamme",up_flamme_ef:"Reichweite: {n} Felder",
+  up_flamme_cap:"⛔ Grenze erreicht — vergrößere das Gitter",pop_back_title:"WILLKOMMEN ZURÜCK",pop_back_time:"{m} Min offline",
+  up_meche_nm:"Zünder",up_meche_ef:"Verzögerung: {n} s",
+  up_speed_nm:"Tempo",up_speed_ef:"Tempo: {n} F/s",
+  up_puiss_nm:"Stärke",up_puiss_ef:"Schaden {d} /Treffer (+{p}%/St)",
+  ach_d1:"50 Felsen zerstören",ach_d2:"500 Felsen zerstören",ach_d3:"5.000 Felsen zerstören",ach_d4:"50.000 Felsen zerstören",ach_d5:"500.000 Felsen zerstören",
+  ach_r1:"Veredelung 50",ach_r2:"Veredelung 150",ach_r3:"Veredelung 400",ach_r4:"Veredelung 700",ach_r5:"Veredelung 1000",
+  ach_g1:"1 goldener Fels",ach_g2:"25 goldene Felsen",ach_g3:"100 goldene Felsen",
+  ach_p1:"1. Prestige",ach_p2:"10 Prestige",ach_p3:"50 Prestige",ach_p4:"Baum vollständig",
+  toast_achievement:"ERFOLG",toast_respec:"RESPEC\nAsche erstattet",
+  toast_detonation:"DETONATION\n+{n} Asche · Ver.-Grenze {cap}",
+  toast_offline:"WILLKOMMEN ZURÜCK\n+{n} Schutt ({m} Min offline)",
+  toast_notenough:"Nicht genug Gesamt-Schutt\nzum Zünden",
+  dlg_reset:"Spiel ENDGÜLTIG löschen? Nicht rückgängig machbar.",
+  dlg_respec:"Baum zurücksetzen? Alle ausgegebene Asche wird erstattet.",
+  dlg_detonate:"ZÜNDEN: setzt den Run zurück (außer Baum, Asche und Gesamt) für {n} Asche? Deine Veredelungsgrenze steigt.",
+  cendres:"Asche",
+  tip_level:"Stufe {l} / {m}",tip_owned:"ERWORBEN",tip_notowned:"Nicht erworben",tip_requires:"Erfordert: ",
+  tip_type_pont:"BRÜCKE",tip_type_niv:"KNOTEN ({m} St.)",tip_type_skin:"KOSMETIK",tip_type_porte:"TOR",
+  tip_buy:"KAUFEN",tip_max:"MAX",tip_unavail:"NICHT VERFÜGBAR",
+  node_coeurExp_nm:"Druckwelle",node_coeurExp_desc:"+1 Flammenreichweite pro Stufe (+{l})",
+  node_coeurP1_nm:"Durchschlag",node_coeurP1_desc:"Die Explosion durchdringt 2 Felsen pro Richtung",
+  node_coeurP2_nm:"Durchschlag II",node_coeurP2_desc:"Die Explosion durchdringt 3 Felsen pro Richtung",
+  node_coeurP3_nm:"Durchschlag III",node_coeurP3_desc:"Die Explosion durchdringt 4 Felsen (Höhepunkt)",
+  node_reflex_nm:"Reflexe",node_reflex_desc:"+0.3 Bewegungstempo pro Stufe (+{v})",
+  node_surch_nm:"Überladung",node_surch_desc:"+1 gleichzeitige Bombe pro Bomber (→2)",
+  node_veloc_nm:"Schnelligkeit",node_veloc_desc:"+0.3 Bewegungstempo pro Stufe (+{v})",
+  node_surch2_nm:"Überladung II",node_surch2_desc:"+1 gleichzeitige Bombe pro Bomber (→3)",
+  node_mechev_nm:"Kurzer Zünder",node_mechev_desc:"Explosionsverzögerung ×0.85 (permanent)",
+  node_elan1_nm:"Warmstart",node_elan1_desc:"Beginne jeden Run mit {s} s Spitzenproduktion",
+  node_reprise_nm:"Veredelungs-Fortsetzung",node_reprise_desc:"Starte Runs bei {p}% deiner Veredelungsgrenze",
+  node_etincelle_nm:"Erster Funke",node_etincelle_desc:"Beginne jeden Run mit Flamme / Zünder / Tempo St. 5",
+  node_temp1_nm:"Gedächtnis",node_temp1_desc:"+1 h Offline-Grenze pro Stufe ({h} h)",
+  node_rendem_nm:"Nachlese",node_rendem_desc:"Offline-Ertrag {p}% der Produktion",
+  node_veille_nm:"Aktiver Standby",node_veille_desc:"Offline-Ertrag auf 50% erhöht",
+  node_horloge_nm:"Kaputte Uhr",node_horloge_desc:"+12 h Offline-Grenze (Höhepunkt)",
+  node_alch1_nm:"Subventionierte Veredelung",node_alch1_desc:"×1.25 Felswert pro Stufe (×{m})",
+  node_marche_nm:"Schwarzmarkt",node_marche_desc:"−5% Verbesserungskosten pro Stufe (×{m})",
+  node_alch2_nm:"Transmutation",node_alch2_desc:"Goldfels 2× häufiger, Rausch +5 s",
+  node_veine_nm:"Mutterader",node_veine_desc:"×1.4 Felswert pro Stufe (×{m})",
+  node_alch3_nm:"Reiche Verbrennung",node_alch3_desc:"+15% Asche beim Prestige",
+  node_skin1_nm:"Magma-Skin",node_skin1_desc:"Bomber in Magma-Farbe",
+  node_skin2_nm:"Smaragd-Skin",node_skin2_desc:"Bomber in Smaragd-Farbe",
+  node_skin3_nm:"Spektral-Skin",node_skin3_desc:"Bomber in Spektral-Farbe",
+  node_pB2_nm:"Bomber II",node_pB2_desc:"Schaltet einen 2. Bomber frei (Brücke Reflexe × Druckwelle)",
+  node_pB3_nm:"Bomber III",node_pB3_desc:"Schaltet einen 3. Bomber frei (Brücke Überladung × Subventioniert)",
+  node_pB4_nm:"Bomber IV",node_pB4_desc:"Schaltet einen 4. Bomber frei (Brücke Schnelligkeit × Durchschlag)",
+  node_pB5_nm:"Bomber V",node_pB5_desc:"Schaltet einen 5. Bomber frei (Brücke Überladung II × Mutterader)",
+  node_pProsp_nm:"Prospektor",node_pProsp_desc:"+25% Wert für 30 s zu Beginn jedes Runs",
+  save_at:"Gespeichert um {t}.",
+  open_tree:"PRESTIGE-BAUM",open_tree_sub:"{c} Asche · {b} Bomber · zünden +{g}",
+  tree_root_title:"Detonation — Quelle des Prestige",
+  bonus_frenzy:"RAUSCH ×7\nErnte verstärkt 15 s",bonus_surch:"ÜBERHITZUNG ×17\nErnte übersteigert 6 s",
+  bonus_essaim:"SCHWARM\n+2 Bomben / Bomber · 12 s",bonus_perfo:"VOLLER DURCHSCHLAG\nExplosionen durchdringen alles · 10 s",
+  bonus_pluie:"SCHUTTREGEN\n+{g} Schutt",bonus_filon:"ADER ×10\nnächste 12 Felsen werden Gold",
+  bonus_onde_one:"SCHOCKWELLE\n{n} Fels pulverisiert",bonus_onde_many:"SCHOCKWELLE\n{n} Felsen pulverisiert",
+  bonus_super:"✦ SUPER-RAUSCH ×777 ✦\n+{g} Schutt!",
+  fx_frenzy:"RAUSCH ×7 {s}s",fx_surch:"ÜBERHITZ. ×17 {s}s",fx_essaim:"SCHWARM {s}s",fx_perfo:"DURCHSCHLAG {s}s",fx_filon:"ADER ×10 ({n})",
+  next_cendre:"Nächste Asche",cendre_remaining:"noch {r} Schutt",
+  rock_0:"Ton",rock_1:"Kreide",rock_2:"Talk",rock_3:"Gips",rock_4:"Steinsalz",rock_5:"Kalkstein",rock_6:"Tonschiefer",rock_7:"Sandstein",rock_8:"Schiefer",rock_9:"Fluorit",
+  rock_10:"Apatit",rock_11:"Obsidian",rock_12:"Feldspat",rock_13:"Pyrit",rock_14:"Hämatit",rock_15:"Granit",rock_16:"Jade",rock_17:"Quarz",rock_18:"Granat",rock_19:"Turmalin",
+  rock_20:"Smaragd",rock_21:"Topas",rock_22:"Spinell",rock_23:"Chrysoberyll",rock_24:"Saphir",rock_25:"Rubin",rock_26:"Moissanit",rock_27:"Diamant",rock_28:"Lonsdaleit",rock_29:"Neutronium",
+},
+ja:{
+  menu_tag:"アイドル · 8-BIT · 爆弾 · 岩",menu_play:"プレイ",menu_continue:"つづける",menu_options:"オプション",menu_sub:"▶ プレイを押す",
+  recap_prestiges:"プレステージ",recap_cendres:"灰",recap_raffmax:"最大精錬",recap_debris:"累計瓦礫",
+  credits:"バージョン {v} · 手作りの爆弾ゲーム",
+  opt_title:"オプション",opt_audio:"オーディオ",opt_sfx:"効果音",opt_music:"音楽",opt_mute:"すべて消音",
+  opt_lang:"言語",opt_controls:"操作",
+  opt_layout_hint:"カメラ移動。方向キーはどちらでも動作します。",
+  opt_display:"表示",opt_fx_high:"高エフェクト",opt_fx_low:"軽量エフェクト",
+  opt_fx_hint:"「軽量」はパーティクルと光彩を減らします — 終盤の非力なマシン向け。",
+  opt_data:"データ",opt_save_ph:"インポートするセーブコードをここに貼り付け…",
+  opt_export:"エクスポート",opt_import:"インポート",opt_reset:"リセット",opt_back:"メニューに戻る",
+  hud_debris:"瓦礫",hud_dps:"瓦礫 / 秒",hud_power:"威力",hud_raff:"精錬",hud_grid:"グリッド",hud_cendres:"灰 · ×プレステージ",
+  strip_header:"精錬 — 岩の30段階",
+  tree_detonate:"起爆",tree_respec:"振り直し",tree_close:"閉じる",
+  side_upgrades:"アップグレード",side_bomber:"ボンバー",side_prestige:"プレステージ",side_ach:"実績",side_game:"ゲーム",
+  side_save:"セーブ",side_save_note:"15秒ごとに自動セーブ。",
+  side_mystery:"深部で何かが動き出している…",
+  raff_desc:"岩を精錬：グリッド拡大、HPと価値が上昇。上限は現在のプレステージ次第。",
+  opt_validate:"確定",opt_saved:"変更を保存しました ✓",
+  opt_exported_copied:"コードをエクスポートしてクリップボードにコピーしました。",opt_exported_manual:"コードをエクスポート — 選択してコピーしてください。",
+  opt_paste_first:"先に欄へコードを貼り付けてください。",opt_import_ok:"インポート成功 — 再読み込み中…",opt_import_bad:"無効なコード — 変更されませんでした。",
+  up_level:"Lv",debris:"瓦礫",
+  up_raff_nm:"精錬",up_raff_ef:"+{m}× 価値 & HP",up_raff_cap:"⛔ 上限到達 — 起爆で押し上げる",
+  up_flamme_nm:"炎",up_flamme_ef:"射程：{n} マス",
+  up_flamme_cap:"⛔ 上限到達 — グリッドを広げる",pop_back_title:"おかえり",pop_back_time:"{m} 分オフライン",
+  up_meche_nm:"導火線",up_meche_ef:"遅延：{n} 秒",
+  up_speed_nm:"速度",up_speed_ef:"速度：{n} マス/秒",
+  up_puiss_nm:"威力",up_puiss_ef:"ダメージ {d} /発 (+{p}%/Lv)",
+  ach_d1:"岩を50個破壊",ach_d2:"岩を500個破壊",ach_d3:"岩を5,000個破壊",ach_d4:"岩を50,000個破壊",ach_d5:"岩を500,000個破壊",
+  ach_r1:"精錬 50",ach_r2:"精錬 150",ach_r3:"精錬 400",ach_r4:"精錬 700",ach_r5:"精錬 1000",
+  ach_g1:"金の岩 1個",ach_g2:"金の岩 25個",ach_g3:"金の岩 100個",
+  ach_p1:"初プレステージ",ach_p2:"プレステージ 10回",ach_p3:"プレステージ 50回",ach_p4:"ツリー完成",
+  toast_achievement:"実績",toast_respec:"振り直し\n灰を返却",
+  toast_detonation:"起爆\n+{n} 灰 · 精錬上限 {cap}",
+  toast_offline:"おかえり\n+{n} 瓦礫 ({m} 分オフライン)",
+  toast_notenough:"累計瓦礫が不足\n起爆できません",
+  dlg_reset:"ゲームを完全に消去しますか？取り消せません。",
+  dlg_respec:"ツリーをリセットしますか？使用した灰はすべて返却されます。",
+  dlg_detonate:"起爆：ラン（ツリー・灰・累計を除く）を初期化して {n} 灰を獲得しますか？精錬上限が上がります。",
+  cendres:"灰",
+  tip_level:"レベル {l} / {m}",tip_owned:"取得済み",tip_notowned:"未取得",tip_requires:"必要：",
+  tip_type_pont:"ブリッジ",tip_type_niv:"ノード ({m} Lv)",tip_type_skin:"コスメ",tip_type_porte:"ゲート",
+  tip_buy:"購入",tip_max:"最大",tip_unavail:"利用不可",
+  node_coeurExp_nm:"衝撃波",node_coeurExp_desc:"レベルごとに炎の射程 +1 (+{l})",
+  node_coeurP1_nm:"貫通",node_coeurP1_desc:"爆風が各方向で岩を2個貫通",
+  node_coeurP2_nm:"貫通 II",node_coeurP2_desc:"爆風が各方向で岩を3個貫通",
+  node_coeurP3_nm:"貫通 III",node_coeurP3_desc:"爆風が各方向で岩を4個貫通（頂点）",
+  node_reflex_nm:"反射神経",node_reflex_desc:"レベルごとに移動速度 +0.3 (+{v})",
+  node_surch_nm:"過負荷",node_surch_desc:"ボンバーごとに同時爆弾 +1 (→2)",
+  node_veloc_nm:"俊敏",node_veloc_desc:"レベルごとに移動速度 +0.3 (+{v})",
+  node_surch2_nm:"過負荷 II",node_surch2_desc:"ボンバーごとに同時爆弾 +1 (→3)",
+  node_mechev_nm:"速い導火線",node_mechev_desc:"爆発遅延 ×0.85（永続）",
+  node_elan1_nm:"ウォームスタート",node_elan1_desc:"各ランを {s} 秒のピーク生産で開始",
+  node_reprise_nm:"精錬再開",node_reprise_desc:"精錬上限の {p}% からランを開始",
+  node_etincelle_nm:"最初の火花",node_etincelle_desc:"各ランを 炎/導火線/速度 Lv5 で開始",
+  node_temp1_nm:"記憶",node_temp1_desc:"レベルごとにオフライン上限 +1時間 ({h} 時間)",
+  node_rendem_nm:"落穂拾い",node_rendem_desc:"オフライン収益 生産の {p}%",
+  node_veille_nm:"アクティブ待機",node_veille_desc:"オフライン収益を50%に引き上げ",
+  node_horloge_nm:"壊れた時計",node_horloge_desc:"オフライン上限 +12時間（頂点）",
+  node_alch1_nm:"精錬補助金",node_alch1_desc:"レベルごとに岩の価値 ×1.25 (×{m})",
+  node_marche_nm:"闇市場",node_marche_desc:"レベルごとにアップグレード費用 −5% (×{m})",
+  node_alch2_nm:"錬成",node_alch2_desc:"金の岩が2倍出現、熱狂 +5秒",
+  node_veine_nm:"母鉱脈",node_veine_desc:"レベルごとに岩の価値 ×1.4 (×{m})",
+  node_alch3_nm:"リッチ燃焼",node_alch3_desc:"プレステージ時の獲得灰 +15%",
+  node_skin1_nm:"マグマスキン",node_skin1_desc:"マグマ色のボンバー",
+  node_skin2_nm:"エメラルドスキン",node_skin2_desc:"エメラルド色のボンバー",
+  node_skin3_nm:"スペクタースキン",node_skin3_desc:"スペクター色のボンバー",
+  node_pB2_nm:"ボンバー II",node_pB2_desc:"2体目のボンバーを解放（ブリッジ 反射神経 × 衝撃波）",
+  node_pB3_nm:"ボンバー III",node_pB3_desc:"3体目のボンバーを解放（ブリッジ 過負荷 × 補助金）",
+  node_pB4_nm:"ボンバー IV",node_pB4_desc:"4体目のボンバーを解放（ブリッジ 俊敏 × 貫通）",
+  node_pB5_nm:"ボンバー V",node_pB5_desc:"5体目のボンバーを解放（ブリッジ 過負荷 II × 母鉱脈）",
+  node_pProsp_nm:"探鉱者",node_pProsp_desc:"各ラン開始時 30秒間 価値 +25%",
+  save_at:"{t} に保存しました。",
+  open_tree:"プレステージツリー",open_tree_sub:"{c} 灰 · {b} ボンバー · 起爆 +{g}",
+  tree_root_title:"起爆 — プレステージの源",
+  bonus_frenzy:"熱狂 ×7\n収穫ブースト 15秒",bonus_surch:"オーバーヒート ×17\n収穫過給 6秒",
+  bonus_essaim:"スウォーム\n+2 爆弾 / ボンバー · 12秒",bonus_perfo:"完全貫通\n爆発がすべてを貫通 · 10秒",
+  bonus_pluie:"瓦礫の雨\n+{g} 瓦礫",bonus_filon:"鉱脈 ×10\n次の12個の岩が金に",
+  bonus_onde_one:"衝撃波\n{n} 個の岩を粉砕",bonus_onde_many:"衝撃波\n{n} 個の岩を粉砕",
+  bonus_super:"✦ スーパー熱狂 ×777 ✦\n+{g} 瓦礫！",
+  fx_frenzy:"熱狂 ×7 {s}秒",fx_surch:"オーバーヒート ×17 {s}秒",fx_essaim:"スウォーム {s}秒",fx_perfo:"貫通 {s}秒",fx_filon:"鉱脈 ×10 ({n})",
+  next_cendre:"次の灰",cendre_remaining:"あと {r} 瓦礫",
+  rock_0:"粘土",rock_1:"白亜",rock_2:"滑石",rock_3:"石膏",rock_4:"岩塩",rock_5:"石灰岩",rock_6:"頁岩",rock_7:"砂岩",rock_8:"粘板岩",rock_9:"蛍石",
+  rock_10:"燐灰石",rock_11:"黒曜石",rock_12:"長石",rock_13:"黄鉄鉱",rock_14:"赤鉄鉱",rock_15:"花崗岩",rock_16:"翡翠",rock_17:"石英",rock_18:"柘榴石",rock_19:"電気石",
+  rock_20:"エメラルド",rock_21:"トパーズ",rock_22:"スピネル",rock_23:"金緑石",rock_24:"サファイア",rock_25:"ルビー",rock_26:"モアッサナイト",rock_27:"ダイヤモンド",rock_28:"ロンズデーライト",rock_29:"ニュートロニウム",
+},
+zh:{
+  menu_tag:"放置 · 8-BIT · 炸弹 · 岩石",menu_play:"开始",menu_continue:"继续",menu_options:"选项",menu_sub:"▶ 按开始",
+  recap_prestiges:"转生",recap_cendres:"灰烬",recap_raffmax:"最高精炼",recap_debris:"累计碎石",
+  credits:"版本 {v} · 一款手工制作的炸弹游戏",
+  opt_title:"选项",opt_audio:"音频",opt_sfx:"音效",opt_music:"音乐",opt_mute:"全部静音",
+  opt_lang:"语言",opt_controls:"操作",
+  opt_layout_hint:"摄像机移动。方向键在两种情况下均可用。",
+  opt_display:"显示",opt_fx_high:"高特效",opt_fx_low:"精简特效",
+  opt_fx_hint:"「精简」减少粒子与光晕 — 适合后期性能较弱的设备。",
+  opt_data:"数据",opt_save_ph:"在此粘贴存档代码以导入…",
+  opt_export:"导出",opt_import:"导入",opt_reset:"重置",opt_back:"返回菜单",
+  hud_debris:"碎石",hud_dps:"碎石 / 秒",hud_power:"威力",hud_raff:"精炼",hud_grid:"网格",hud_cendres:"灰烬 · ×转生",
+  strip_header:"精炼 — 30个岩石层级",
+  tree_detonate:"引爆",tree_respec:"重置加点",tree_close:"关闭",
+  side_upgrades:"升级",side_bomber:"炸弹人",side_prestige:"转生",side_ach:"成就",side_game:"游戏",
+  side_save:"保存",side_save_note:"每15秒自动保存。",
+  side_mystery:"深处有什么正在苏醒…",
+  raff_desc:"精炼岩石：网格更大，HP与价值更高。当前上限取决于你的转生。",
+  opt_validate:"确认",opt_saved:"更改已保存 ✓",
+  opt_exported_copied:"代码已导出并复制到剪贴板。",opt_exported_manual:"代码已导出 — 请选择并复制。",
+  opt_paste_first:"请先在栏中粘贴代码。",opt_import_ok:"导入成功 — 正在重新加载…",opt_import_bad:"无效代码 — 未做任何更改。",
+  up_level:"Lv",debris:"碎石",
+  up_raff_nm:"精炼",up_raff_ef:"+{m}× 价值 & HP",up_raff_cap:"⛔ 已达上限 — 引爆以提升",
+  up_flamme_nm:"火焰",up_flamme_ef:"范围：{n} 格",
+  up_flamme_cap:"⛔ 已达上限 — 扩大网格",pop_back_title:"欢迎回来",pop_back_time:"离线 {m} 分钟",
+  up_meche_nm:"引信",up_meche_ef:"延迟：{n} 秒",
+  up_speed_nm:"速度",up_speed_ef:"速度：{n} 格/秒",
+  up_puiss_nm:"威力",up_puiss_ef:"伤害 {d} /击 (+{p}%/级)",
+  ach_d1:"摧毁50块岩石",ach_d2:"摧毁500块岩石",ach_d3:"摧毁5,000块岩石",ach_d4:"摧毁50,000块岩石",ach_d5:"摧毁500,000块岩石",
+  ach_r1:"精炼 50",ach_r2:"精炼 150",ach_r3:"精炼 400",ach_r4:"精炼 700",ach_r5:"精炼 1000",
+  ach_g1:"1块金色岩石",ach_g2:"25块金色岩石",ach_g3:"100块金色岩石",
+  ach_p1:"首次转生",ach_p2:"转生 10次",ach_p3:"转生 50次",ach_p4:"技能树完成",
+  toast_achievement:"成就",toast_respec:"重置加点\n返还灰烬",
+  toast_detonation:"引爆\n+{n} 灰烬 · 精炼上限 {cap}",
+  toast_offline:"欢迎回来\n+{n} 碎石 (离线 {m} 分钟)",
+  toast_notenough:"累计碎石不足\n无法引爆",
+  dlg_reset:"永久删除你的游戏？此操作不可撤销。",
+  dlg_respec:"重置技能树？所有已花费的灰烬将被返还。",
+  dlg_detonate:"引爆：将本轮重置（技能树、灰烬和累计除外）以获得 {n} 灰烬？你的精炼上限将提升。",
+  cendres:"灰烬",
+  tip_level:"等级 {l} / {m}",tip_owned:"已获得",tip_notowned:"未获得",tip_requires:"需要：",
+  tip_type_pont:"桥接",tip_type_niv:"节点 ({m} 级)",tip_type_skin:"外观",tip_type_porte:"门",
+  tip_buy:"购买",tip_max:"最大",tip_unavail:"不可用",
+  node_coeurExp_nm:"冲击波",node_coeurExp_desc:"每级火焰范围 +1 (+{l})",
+  node_coeurP1_nm:"穿透",node_coeurP1_desc:"爆炸每个方向穿透2块岩石",
+  node_coeurP2_nm:"穿透 II",node_coeurP2_desc:"爆炸每个方向穿透3块岩石",
+  node_coeurP3_nm:"穿透 III",node_coeurP3_desc:"爆炸每个方向穿透4块岩石（顶点）",
+  node_reflex_nm:"反应",node_reflex_desc:"每级移动速度 +0.3 (+{v})",
+  node_surch_nm:"过载",node_surch_desc:"每个炸弹人同时炸弹 +1 (→2)",
+  node_veloc_nm:"敏捷",node_veloc_desc:"每级移动速度 +0.3 (+{v})",
+  node_surch2_nm:"过载 II",node_surch2_desc:"每个炸弹人同时炸弹 +1 (→3)",
+  node_mechev_nm:"短引信",node_mechev_desc:"爆炸延迟 ×0.85（永久）",
+  node_elan1_nm:"热启动",node_elan1_desc:"每轮以 {s} 秒的巅峰产量开始",
+  node_reprise_nm:"精炼续航",node_reprise_desc:"每轮从你精炼上限的 {p}% 开始",
+  node_etincelle_nm:"第一火花",node_etincelle_desc:"每轮以 火焰/引信/速度 5级开始",
+  node_temp1_nm:"记忆",node_temp1_desc:"每级离线上限 +1小时 ({h} 小时)",
+  node_rendem_nm:"拾遗",node_rendem_desc:"离线收益为产量的 {p}%",
+  node_veille_nm:"活跃待机",node_veille_desc:"离线收益提升至50%",
+  node_horloge_nm:"坏钟",node_horloge_desc:"离线上限 +12小时（顶点）",
+  node_alch1_nm:"精炼补贴",node_alch1_desc:"每级岩石价值 ×1.25 (×{m})",
+  node_marche_nm:"黑市",node_marche_desc:"每级升级费用 −5% (×{m})",
+  node_alch2_nm:"嬗变",node_alch2_desc:"金色岩石出现率2倍，狂热 +5秒",
+  node_veine_nm:"母矿脉",node_veine_desc:"每级岩石价值 ×1.4 (×{m})",
+  node_alch3_nm:"富燃烧",node_alch3_desc:"转生时获得的灰烬 +15%",
+  node_skin1_nm:"岩浆皮肤",node_skin1_desc:"岩浆色炸弹人",
+  node_skin2_nm:"翡翠皮肤",node_skin2_desc:"翡翠色炸弹人",
+  node_skin3_nm:"幽灵皮肤",node_skin3_desc:"幽灵色炸弹人",
+  node_pB2_nm:"炸弹人 II",node_pB2_desc:"解锁第2个炸弹人（桥接 反应 × 冲击波）",
+  node_pB3_nm:"炸弹人 III",node_pB3_desc:"解锁第3个炸弹人（桥接 过载 × 补贴）",
+  node_pB4_nm:"炸弹人 IV",node_pB4_desc:"解锁第4个炸弹人（桥接 敏捷 × 穿透）",
+  node_pB5_nm:"炸弹人 V",node_pB5_desc:"解锁第5个炸弹人（桥接 过载 II × 母矿脉）",
+  node_pProsp_nm:"勘探者",node_pProsp_desc:"每轮开始时 30秒内 价值 +25%",
+  save_at:"已于 {t} 保存。",
+  open_tree:"转生技能树",open_tree_sub:"{c} 灰烬 · {b} 炸弹人 · 引爆 +{g}",
+  tree_root_title:"引爆 — 转生之源",
+  bonus_frenzy:"狂热 ×7\n采集提升 15秒",bonus_surch:"过热 ×17\n采集超载 6秒",
+  bonus_essaim:"蜂群\n+2 炸弹 / 炸弹人 · 12秒",bonus_perfo:"完全穿透\n爆炸穿透一切 · 10秒",
+  bonus_pluie:"碎石之雨\n+{g} 碎石",bonus_filon:"矿脉 ×10\n接下来12块岩石变金",
+  bonus_onde_one:"震荡波\n粉碎 {n} 块岩石",bonus_onde_many:"震荡波\n粉碎 {n} 块岩石",
+  bonus_super:"✦ 超级狂热 ×777 ✦\n+{g} 碎石！",
+  fx_frenzy:"狂热 ×7 {s}秒",fx_surch:"过热 ×17 {s}秒",fx_essaim:"蜂群 {s}秒",fx_perfo:"穿透 {s}秒",fx_filon:"矿脉 ×10 ({n})",
+  next_cendre:"下一个灰烬",cendre_remaining:"还需 {r} 碎石",
+  rock_0:"黏土",rock_1:"白垩",rock_2:"滑石",rock_3:"石膏",rock_4:"岩盐",rock_5:"石灰岩",rock_6:"页岩",rock_7:"砂岩",rock_8:"板岩",rock_9:"萤石",
+  rock_10:"磷灰石",rock_11:"黑曜石",rock_12:"长石",rock_13:"黄铁矿",rock_14:"赤铁矿",rock_15:"花岗岩",rock_16:"翡翠",rock_17:"石英",rock_18:"石榴石",rock_19:"电气石",
+  rock_20:"祖母绿",rock_21:"黄玉",rock_22:"尖晶石",rock_23:"金绿宝石",rock_24:"蓝宝石",rock_25:"红宝石",rock_26:"莫桑石",rock_27:"钻石",rock_28:"六方金刚石",rock_29:"中子素",
+}};
+function t(key,vars){const d=I18N[G.opt.lang]||{};let s=(key in d)?d[key]:(I18N.fr[key]!==undefined?I18N.fr[key]:key);
+  if(vars)for(const k in vars)s=s.split("{"+k+"}").join(vars[k]);return s;}
+function updatePlayBtn(){const el=document.getElementById("play");if(!el)return;
+  const had=G.totalDebris>0||G.stats.prestiges>0||G.raff>1;el.textContent=t(had?"menu_continue":"menu_play");}
+function applyLang(){const lang=G.opt.lang||"fr";document.documentElement.lang=lang;
+  document.body.classList.toggle("cjk",lang==="ja"||lang==="zh");
+  document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=t(el.getAttribute("data-i18n"));});
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{el.placeholder=t(el.getAttribute("data-i18n-ph"));});
+  updatePlayBtn();updateMenuRecap();initMenuCredits();
+  if(document.getElementById("achlist"))buildAch();}
+
+/* ============ OPTIONS ============ */
+const LANGS=[["fr","Français"],["en","English"],["es","Español"],["de","Deutsch"],["it","Italiano"],["ja","日本語"],["zh","中文"]];
+function optMsg(m,ok){const e=document.getElementById("opt-data-msg");if(!e)return;e.textContent=m;e.style.color=(ok===false)?"var(--red)":"var(--good)";}
+function syncSeg(id,val){document.querySelectorAll("#"+id+" button").forEach(b=>b.classList.toggle("on",b.dataset.v===val));}
+function buildLangs(){const c=document.getElementById("opt-langs");c.innerHTML="";
+  for(const[code,label]of LANGS){const b=document.createElement("button");b.textContent=label;b.dataset.v=code;
+    b.onclick=()=>{G.opt.lang=code;syncSeg("opt-langs",G.opt.lang);applyLang();save();};c.appendChild(b);}}
+function syncOptions(){
+  document.getElementById("opt-sfx").value=Math.round(G.opt.sfxVol*100);
+  document.getElementById("opt-sfx-v").textContent=Math.round(G.opt.sfxVol*100)+"%";
+  document.getElementById("opt-music").value=Math.round(G.opt.musicVol*100);
+  document.getElementById("opt-music-v").textContent=Math.round(G.opt.musicVol*100)+"%";
+  document.getElementById("opt-mute").checked=G.opt.mute;
+  syncSeg("opt-langs",G.opt.lang);syncSeg("opt-layout",G.opt.keyLayout);syncSeg("opt-fx",G.opt.effects);}
+function openOptions(){syncOptions();optMsg("");document.getElementById("options").classList.add("show");}
+function closeOptions(){document.getElementById("options").classList.remove("show");}
+function returnToMenu(){save();G.started=false;closeOptions();updateMenuRecap();updatePlayBtn();
+  document.getElementById("menu").classList.remove("hide");}
+function exportSave(){save();const raw=localStorage.getItem(SKEY)||"{}";
+  const code=btoa(unescape(encodeURIComponent(raw)));const ta=document.getElementById("opt-save");ta.value=code;ta.focus();ta.select();
+  let ok=false;try{ok=document.execCommand("copy");}catch(e){}
+  optMsg(ok?t("opt_exported_copied"):t("opt_exported_manual"));}
+function importSave(){const code=document.getElementById("opt-save").value.trim();
+  if(!code){optMsg(t("opt_paste_first"),false);return;}
+  try{const raw=decodeURIComponent(escape(atob(code)));const obj=JSON.parse(raw);
+    if(!obj||typeof obj!=="object"||Array.isArray(obj))throw 0;
+    localStorage.setItem(SKEY,JSON.stringify(obj));optMsg(t("opt_import_ok"));setTimeout(()=>location.reload(),700);}
+  catch(e){optMsg(t("opt_import_bad"),false);}}
+function resetGame(){if(!confirm(t("dlg_reset")))return;
+  localStorage.removeItem(SKEY);location.reload();}
+function bindUI(){
+  U={raff:mkUpg("u-raff"),flamme:mkUpg("u-flamme"),meche:mkUpg("u-meche"),speed:mkUpg("u-speed"),puiss:mkUpg("u-puiss")};
+  document.getElementById("u-raff").onclick=()=>buy("raff");
+  document.getElementById("u-flamme").onclick=()=>buy("flamme");
+  document.getElementById("u-meche").onclick=()=>buy("meche");
+  document.getElementById("u-speed").onclick=()=>buy("speed");
+  document.getElementById("u-puiss").onclick=()=>buy("puiss");
+  document.querySelectorAll("#buymult button").forEach(b=>b.onclick=()=>{
+    G.buyMult=b.dataset.m==="max"?"max":parseInt(b.dataset.m);
+    document.querySelectorAll("#buymult button").forEach(x=>x.classList.toggle("on",x===b));});
+  document.getElementById("u-save").onclick=()=>save();
+  document.getElementById("open-tree").onclick=()=>{if(prestigeGain()<1)return;
+    if(confirm(t("dlg_detonate",{n:prestigeGain()}))){doPrestige();openTree();}};
+  document.getElementById("tree-close").onclick=closeTree;
+  document.getElementById("tree-respec").onclick=()=>{if(confirm(t("dlg_respec")))respec();};
+  document.getElementById("play").onclick=()=>{audioInit();document.getElementById("menu").classList.add("hide");G.started=true;};
+  // amorce l'audio au tout premier geste (contrainte navigateur) — la musique démarre alors, menu compris
+  const _firstGesture=()=>{audioInit();window.removeEventListener("pointerdown",_firstGesture);window.removeEventListener("keydown",_firstGesture);};
+  window.addEventListener("pointerdown",_firstGesture);window.addEventListener("keydown",_firstGesture);
+  // options & retour menu
+  document.getElementById("menu-options").onclick=openOptions;
+  document.getElementById("ingame-menu").onclick=returnToMenu;
+  document.getElementById("opt-back").onclick=returnToMenu;
+  document.getElementById("offpop-ok").onclick=()=>{document.getElementById("offpop").style.display="none";};
+  document.getElementById("opt-validate").onclick=()=>{save();const m=document.getElementById("opt-msg");
+    if(m){m.style.color="var(--good)";m.textContent=t("opt_saved");clearTimeout(m._t);m._t=setTimeout(()=>{m.textContent="";},2200);}};
+  buildLangs();
+  const sfxEl=document.getElementById("opt-sfx"),musEl=document.getElementById("opt-music");
+  sfxEl.oninput=e=>{G.opt.sfxVol=e.target.value/100;document.getElementById("opt-sfx-v").textContent=e.target.value+"%";applyVolumes();};
+  sfxEl.onchange=()=>save();
+  musEl.oninput=e=>{G.opt.musicVol=e.target.value/100;document.getElementById("opt-music-v").textContent=e.target.value+"%";applyVolumes();};
+  musEl.onchange=()=>save();
+  document.getElementById("opt-mute").onchange=e=>{G.opt.mute=e.target.checked;applyVolumes();save();};
+  document.querySelectorAll("#opt-layout button").forEach(b=>b.onclick=()=>{G.opt.keyLayout=b.dataset.v;syncSeg("opt-layout",G.opt.keyLayout);save();});
+  document.querySelectorAll("#opt-fx button").forEach(b=>b.onclick=()=>{G.opt.effects=b.dataset.v;syncSeg("opt-fx",G.opt.effects);save();});
+  document.getElementById("opt-export").onclick=exportSave;
+  document.getElementById("opt-import").onclick=importSave;
+  document.getElementById("opt-reset").onclick=resetGame;
+  buildAch();buildTree();
+  let tp=false,tlx=0,tly=0,opx=0,opy=0;
+  treeview.addEventListener("mousedown",e=>{tp=true;tlx=e.clientX;tly=e.clientY;opx=pan.x;opy=pan.y;treeview.classList.add("drag");if(!tipPinned)hideTip();});
+  window.addEventListener("mousemove",e=>{if(!tp)return;pan.x=opx+(e.clientX-tlx);pan.y=opy+(e.clientY-tly);applyPan();});
+  window.addEventListener("mouseup",()=>{tp=false;treeview.classList.remove("drag");});
+  treeview.addEventListener("click",e=>{if(e.target===treeview||e.target===treeworld||e.target===svg){tipPinned=false;hideTip();}});
+  let dragging=false,lastX=0,lastY=0,moved=0;
+  stage.addEventListener("mousedown",e=>{if(e.target!==cv)return;dragging=true;moved=0;lastX=e.clientX;lastY=e.clientY;stage.classList.add("drag");});
+  window.addEventListener("mouseup",e=>{if(dragging&&moved<4){const r=cv.getBoundingClientRect();
+    clickGolden(Math.floor((e.clientX-r.left+G.cam.x)/CELL),Math.floor((e.clientY-r.top+G.cam.y)/CELL));}
+    dragging=false;stage.classList.remove("drag");});
+  window.addEventListener("mousemove",e=>{if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;
+    moved+=Math.abs(dx)+Math.abs(dy);G.cam.x-=dx;G.cam.y-=dy;lastX=e.clientX;lastY=e.clientY;clampCam();});
+  // minimap : glisser-déposer (aimantation au coin le plus proche), repli, pastille
+  let mdrag=false,msx=0,msy=0,mmoved=0,mox=0,moy=0;
+  minimapEl.addEventListener("mousedown",e=>{if(e.target===miniToggle)return;e.stopPropagation();
+    mdrag=true;mmoved=0;msx=e.clientX;msy=e.clientY;const r=minimapEl.getBoundingClientRect();mox=r.left;moy=r.top;minimapEl.classList.add("drag");});
+  window.addEventListener("mousemove",e=>{if(!mdrag)return;const dx=e.clientX-msx,dy=e.clientY-msy;mmoved+=Math.abs(dx)+Math.abs(dy);
+    if(mmoved>5){const sr=stage.getBoundingClientRect();
+      minimapEl.style.left=(mox-sr.left+dx)+'px';minimapEl.style.right='auto';minimapEl.style.top=(moy-sr.top+dy)+'px';minimapEl.style.bottom='auto';}});
+  window.addEventListener("mouseup",()=>{if(!mdrag)return;mdrag=false;minimapEl.classList.remove("drag");
+    if(mmoved<=5)return;const r=minimapEl.getBoundingClientRect();G.miniCorner=nearestCorner(r.left+r.width/2,r.top+r.height/2);applyMiniCorner();save();});
+  miniToggle.addEventListener("mousedown",e=>e.stopPropagation());
+  miniToggle.addEventListener("click",e=>{e.stopPropagation();toggleMini();});
+  pastilleEl.addEventListener("click",e=>{e.stopPropagation();toggleMini();});
+  window.addEventListener("keydown",e=>{const ae=document.activeElement;
+    if(ae&&/^(input|textarea)$/i.test(ae.tagName))return;
+    G.keys[e.key.toLowerCase()]=true;
+    if(e.key.toLowerCase()==="i"){G.debug=!G.debug;document.getElementById("dbg").style.display=G.debug?"block":"none";}
+    if(e.key.toLowerCase()==="m")toggleMini();});
+  window.addEventListener("keyup",e=>{G.keys[e.key.toLowerCase()]=false;});
+  window.addEventListener("resize",resize);
+  window.addEventListener("beforeunload",save);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){save();G._hidAt=Date.now();G._hidBase=(G.dpsSmooth||0)/Math.max(1,harvestMult());}
+    else if(G._hidAt){const el=(Date.now()-G._hidAt)/1000;if(el>1&&G._hidBase>0){const g=G._hidBase*el;G.debris+=g;G.totalDebris+=g;}G._hidAt=0;last=performance.now();}
+  });
+  document.getElementById("dbg").style.display="none";}
+function camKeys(dt){const sp=520*dt,k=G.keys,q=G.opt.keyLayout==="qwerty",up=q?"w":"z",left=q?"a":"q";
+  if(k[up]||k["arrowup"])G.cam.y-=sp;if(k["s"]||k["arrowdown"])G.cam.y+=sp;
+  if(k[left]||k["arrowleft"])G.cam.x-=sp;if(k["d"]||k["arrowright"])G.cam.x+=sp;
+  if(k[up]||k["s"]||k[left]||k["d"]||k["arrowup"]||k["arrowdown"]||k["arrowleft"]||k["arrowright"])clampCam();}
+
+/* ============ FOND ANIMÉ DU MENU (décoratif, 100% indépendant de la partie) ============ */
+const MB={cv:null,ctx:null,gN:0,gM:0,cell:34,grid:[],bombers:[],bombs:[],flames:[],parts:[],t:0,init:false};
+function mbTier(){return Math.floor(Math.random()*NTYPES);}
+function mbNewBomber(){let x=1,y=1,tr=0;do{x=1+Math.floor(Math.random()*(MB.gN-2));y=1+Math.floor(Math.random()*(MB.gM-2));tr++;}
+  while(MB.grid[y]&&MB.grid[y][x]&&MB.grid[y][x].t!==0&&tr<40);
+  return{px:x,py:y,cx:x,cy:y,tx:x,ty:y,face:1,frame:0,skin:Math.floor(Math.random()*SKINS.length),bombT:0.6+Math.random()*2.4,moving:false};}
+function mbSetup(){const cv=document.getElementById("menubg");if(!cv||!cv.parentElement)return false;
+  const w=cv.parentElement.clientWidth,h=cv.parentElement.clientHeight;if(w<20||h<20)return false;
+  cv.width=w;cv.height=h;MB.cv=cv;MB.ctx=cv.getContext("2d");MB.ctx.imageSmoothingEnabled=false;
+  MB.cell=Math.max(28,Math.floor(w/26));const cs=MB.cell;MB.gN=Math.ceil(w/cs)+1;MB.gM=Math.ceil(h/cs)+1;
+  MB.grid=[];for(let y=0;y<MB.gM;y++){MB.grid[y]=[];for(let x=0;x<MB.gN;x++){
+    let t=0;if(x%2===1&&y%2===1)t=1;else if(Math.random()<0.4)t=2;
+    MB.grid[y][x]={t,type:t===2?mbTier():0};}}
+  MB.bombers=[mbNewBomber(),mbNewBomber(),mbNewBomber()];MB.bombs=[];MB.flames=[];MB.parts=[];MB.init=true;return true;}
+function mbFree(x,y){return x>=0&&y>=0&&x<MB.gN&&y<MB.gM&&MB.grid[y][x].t===0;}
+function mbAdjRock(x,y){for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;
+  if(nx>=0&&ny>=0&&nx<MB.gN&&ny<MB.gM&&MB.grid[ny][nx].t===2)return true;}return false;}
+function mbExplode(bo){const rng=2;
+  for(const[dx,dy]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const rr=(dx||dy)?rng:0;
+    for(let k=(dx||dy)?1:0;k<=rr;k++){const x=bo.cx+dx*k,y=bo.cy+dy*k;
+      if(x<0||y<0||x>=MB.gN||y>=MB.gM)break;const c=MB.grid[y][x];if(c.t===1)break;
+      MB.flames.push({x,y,life:0.3,max:0.3});
+      if(c.t===2){const col=ROCKS[c.type][1];for(let p=0;p<4;p++)MB.parts.push({x:x+0.5,y:y+0.5,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:0.5,max:0.5,col});
+        MB.grid[y][x]={t:0,type:0};break;}}}}
+function mbTick(dt){MB.t+=dt;
+  for(const b of MB.bombers){
+    if(b.cx===b.tx&&b.cy===b.ty){const dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(([dx,dy])=>mbFree(b.cx+dx,b.cy+dy));
+      if(dirs.length){const[dx,dy]=dirs[Math.floor(Math.random()*dirs.length)];b.tx=b.cx+dx;b.ty=b.cy+dy;if(dx)b.face=dx>0?1:-1;}}
+    const spd=3.4*dt,ddx=b.tx-b.px,ddy=b.ty-b.py,d=Math.hypot(ddx,ddy);
+    if(d<=spd||d===0){b.px=b.tx;b.py=b.ty;b.cx=b.tx;b.cy=b.ty;b.moving=false;}
+    else{b.px+=ddx/d*spd;b.py+=ddy/d*spd;b.moving=true;}
+    b.frame=b.moving?(Math.floor(MB.t*6)%2):0;
+    b.bombT-=dt;if(b.bombT<=0){b.bombT=1.4+Math.random()*2.4;if(mbAdjRock(b.cx,b.cy))MB.bombs.push({cx:b.cx,cy:b.cy,fuse:1.1});}}
+  for(let i=MB.bombs.length-1;i>=0;i--){MB.bombs[i].fuse-=dt;if(MB.bombs[i].fuse<=0){mbExplode(MB.bombs[i]);MB.bombs.splice(i,1);}}
+  for(let i=MB.flames.length-1;i>=0;i--){MB.flames[i].life-=dt;if(MB.flames[i].life<=0)MB.flames.splice(i,1);}
+  for(let i=MB.parts.length-1;i>=0;i--){const p=MB.parts[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.9;p.vy*=0.9;if(p.life<=0)MB.parts.splice(i,1);}
+  if(MB.parts.length>200)MB.parts.splice(0,MB.parts.length-200);
+  if(Math.random()<dt*4){const x=1+Math.floor(Math.random()*(MB.gN-2)),y=1+Math.floor(Math.random()*(MB.gM-2));
+    if(MB.grid[y]&&MB.grid[y][x]&&MB.grid[y][x].t===0&&!(x%2===1&&y%2===1)&&!MB.bombers.some(b=>b.cx===x&&b.cy===y))MB.grid[y][x]={t:2,type:mbTier()};}}
+function mbDraw(){const c=MB.ctx;if(!c)return;const cs=MB.cell;c.clearRect(0,0,MB.cv.width,MB.cv.height);
+  for(let y=0;y<MB.gM;y++)for(let x=0;x<MB.gN;x++){const cell=MB.grid[y][x],px=x*cs,py=y*cs;
+    if(cell.t===1){c.fillStyle="#6b6358";c.fillRect(px+2,py+2,cs-4,cs-4);}
+    else if(cell.t===2){c.drawImage(rockSprite(cell.type,0),px,py,cs,cs);}}
+  for(const f of MB.flames){const a=f.life/f.max,s=cs*(0.5+0.5*a),o=(cs-s)/2;c.fillStyle="rgba(255,150,50,"+(a*0.9)+")";c.fillRect(f.x*cs+o,f.y*cs+o,s,s);
+    c.fillStyle="rgba(255,240,190,"+a+")";c.fillRect(f.x*cs+cs/2-2,f.y*cs+cs/2-2,4,4);}
+  for(const p of MB.parts){c.globalAlpha=p.life/p.max;c.fillStyle=p.col;c.fillRect(p.x*cs-2,p.y*cs-2,4,4);c.globalAlpha=1;}
+  for(const b of MB.bombs){const px=b.cx*cs,py=b.cy*cs;c.fillStyle="#15151f";c.beginPath();c.arc(px+cs/2,py+cs/2,cs*0.3,0,7);c.fill();
+    c.fillStyle=Math.sin(MB.t*8)>0?"#ffcf3a":"#ff7a3d";c.fillRect(px+cs/2-2,py+3,4,3);}
+  for(const b of MB.bombers){c.drawImage(bomberSprite(b.skin,b.frame),Math.round(b.px*cs),Math.round(b.py*cs),cs,cs);}}
+function mbFrame(dt){try{const cv=document.getElementById("menubg");
+  if(!MB.init||(cv&&cv.parentElement&&cv.width!==cv.parentElement.clientWidth)){if(!mbSetup())return;}
+  mbTick(dt);mbDraw();}catch(e){}}
+function updateMenuRecap(){const el=document.getElementById("menu-recap");if(!el)return;
+  if(!(G.stats.prestiges>0||G.totalDebris>0)){el.style.display="none";return;}
+  el.style.display="grid";
+  el.innerHTML='<div><span>'+t("recap_prestiges")+'</span><b>'+fmt(G.stats.prestiges)+'</b></div>'+
+    '<div><span>'+t("recap_cendres")+'</span><b>'+fmt(G.cendres)+'</b></div>'+
+    '<div><span>'+t("recap_raffmax")+'</span><b>'+fmt(G.stats.maxRaff)+'</b></div>'+
+    '<div><span>'+t("recap_debris")+'</span><b>'+fmt(G.totalDebris)+'</b></div>';}
+function initMenuCredits(){const el=document.getElementById("menu-credits");if(el)el.textContent=t("credits",{v:BUILD});}
+
+/* ============ BOUCLE ============ */
+let last=performance.now(),stripT=0;
+function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
+  try{
+    if(G.started){
+      camKeys(dt);bombersTick(dt);
+      for(let i=G.bombs.length-1;i>=0;i--){G.bombs[i].fuse-=dt;if(G.bombs[i].fuse<=0)explode(G.bombs[i]);}
+      partsTick(dt);goldTick(dt);updateFxBar();
+      if(G.rockCount<=0)respawn(true);
+      const instRate=dt>0?G._gainFrame/dt:0;G._gainFrame=0;G.dpsSmooth+=(instRate-G.dpsSmooth)*Math.min(1,dt/CFG.DPS_TAU);
+      G._t+=dt;if(G._t>=1){G.dps=G._gain/G._t;G._gain=0;G._t=0;if(G.dps>G.peakRate)G.peakRate=G.dps;checkAch();}
+      G._saveT+=dt;if(G._saveT>=15){G._saveT=0;save();}
+    }else{mbFrame(dt);}
+    stripT+=dt;if(stripT>=0.5){stripT=0;drawStrip();}
+    if(toastT>0){toastT-=dt;if(toastT<=0)document.getElementById("toast").classList.remove("show");}
+    draw();updateMini(dt);G._frames++;
+    if(G.debug){const b=G.bombers[0]||{cx:0,cy:0};
+      document.getElementById("dbg").textContent="BUILD "+BUILD+"\nfps "+Math.round(1/Math.max(dt,0.001))+
+        "\nbombers "+G.bombers.length+" bombes "+G.bombs.length+"\nraff "+G.raff+"/"+raffCap()+" puiss "+G.upg.puiss+
+        "\npwr "+fmt(power())+" hp~"+fmt(rockHP(dominantType()))+"\ncumul "+G.totalDebris.toExponential(2)+" cend "+fmt(G.cendres);}
+    G._huoT+=dt;if(G._huoT>=0.1){G._huoT=0;updateHUD();}
+  }catch(err){console.error("frame",err);}
+  requestAnimationFrame(loop);}
+
+/* ============ INIT ============ */
+function init(){bindUI();const had=load();if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
+  if(G.raff>raffCap())G.raff=raffCap();
+  applyLang();
+  G.runStartProsp=G.runStartProsp||1;G.dpsSmooth=G.dps||0;
+  G.gridN=gridSizeFor(G.raff);G.grid=newGrid();resetBombers();applyMiniCorner();resize();updateHUD();drawStrip();
+  requestAnimationFrame(loop);}
+let _roPending=false;
+const ro=new ResizeObserver(()=>{if(_roPending)return;_roPending=true;
+  requestAnimationFrame(()=>{_roPending=false;resize();});});
+ro.observe(stage);
+init();
+</script>
+</body>
+</html>
