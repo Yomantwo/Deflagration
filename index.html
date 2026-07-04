@@ -972,12 +972,24 @@ function nearestCorner(cx,cy){const r=stage.getBoundingClientRect();
 
 /* ============ BANDE DES 30 TIERS ============ */
 const stripCv=document.getElementById("tierstrip"),sctx=stripCv.getContext("2d");
+// Pictos bande (matrices pixel validées) : pierre = gain, cœur = PV
+const PICTO_PIERRE={p:{K:"#3c2f20",L:"#c6b184",H:"#e6d6ae",M:"#8a7556",D:"#4f4130"},rows:[
+"...KKK....","..KLLLK...",".KLLHMMK..","KLLLHMMMK.","KLLMMMMDK.","KLMMMMDDK.",".KMMMDDDK.","..KMDDDK..","...KKKK..."]};
+const PICTO_COEUR={p:{K:"#3c1414",r:"#cf2f3a",H:"#e86a72"},rows:[
+".KK..KK...","KHrKKrrK..","KrrrrrrrK.","KrrrrrrrK.",".KrrrrrK..","..KrrrK...","...KrK....","....K....."]};
+function drawPicto(pic,x,y,s){for(let r=0;r<pic.rows.length;r++){const row=pic.rows[r];for(let c=0;c<row.length;c++){const col=pic.p[row[c]];if(!col)continue;sctx.fillStyle=col;sctx.fillRect(Math.round(x+c*s),Math.round(y+r*s),Math.ceil(s),Math.ceil(s));}}}
 function drawStrip(){const wrap=document.getElementById("tierbox");if(!wrap)return;
   const W=wrap.clientWidth-14;if(W<=0)return;stripCv.width=W;const H=stripCv.height;sctx.imageSmoothingEnabled=false;
   sctx.clearRect(0,0,W,H);const w=tierWeights(G.raff),maxW=Math.max(...w),dom=dominantType();
   // découverte : le tier le plus haut rendu présent par le Raffinage est mémorisé (définitif)
   for(let i=NTYPES-1;i>=0;i--){if(w[i]/maxW>0.02){if(i>G.maxTierSeen){G.maxTierSeen=i;if(G.started)sfx("unlock");}break;}}
   const cw=W/NTYPES,spr=Math.min(28,cw-4);sctx.textAlign="center";
+  const drawStat=(pic,txt,cxx,yy,col)=>{const cols=pic.rows[0].length,rows=pic.rows.length,gap=2,pwOf=(ff)=>Math.round(ff*0.68*(cols/rows));
+    let f=16;sctx.font=f+"px 'VT323',monospace";
+    while(sctx.measureText(txt).width+pwOf(f)+gap>cw-3&&f>9){f--;sctx.font=f+"px 'VT323',monospace";}
+    const tw=sctx.measureText(txt).width,pwF=pwOf(f),startX=cxx+cw/2-(pwF+gap+tw)/2,ph=Math.round(f*0.68);
+    drawPicto(pic,startX,yy-ph,ph/rows);
+    sctx.fillStyle=col;sctx.fillText(txt,startX+pwF+gap+tw/2,yy);};
   for(let i=0;i<NTYPES;i++){const cx=i*cw,present=w[i]/maxW,active=present>0.02,known=i<=G.maxTierSeen;
     if(i===dom){sctx.fillStyle="#f7eed8";sctx.fillRect(cx+1,0,cw-2,H);sctx.strokeStyle="#c8643c";sctx.lineWidth=2;sctx.strokeRect(cx+1,1,cw-2,H-2);}
     const sprite=rockSprite(i,0),sx=cx+(cw-spr)/2;
@@ -993,8 +1005,8 @@ function drawStrip(){const wrap=document.getElementById("tierbox");if(!wrap)retu
       sctx.font="16px 'VT323',monospace";sctx.fillStyle=(i===dom)?"#c8643c":"#6f5a3a";
       sctx.fillText((pct>=10?Math.round(pct):pct.toFixed(1))+"%",cx+cw/2,y2);
       const fit=(txt)=>{let f=16;sctx.font=f+"px 'VT323',monospace";while(sctx.measureText(txt).width>cw-3&&f>10){f--;sctx.font=f+"px 'VT323',monospace";}};
-      const gain=fmt(rockValue(i));fit(gain);sctx.fillStyle="#bf7d2e";sctx.fillText(gain,cx+cw/2,y3);
-      const pv=fmt(rockHP(i));fit(pv);sctx.fillStyle="#b5505a";sctx.fillText(pv,cx+cw/2,y4);}}}
+      drawStat(PICTO_PIERRE,fmt(rockValue(i)),cx,y3,"#8a5a10");
+      drawStat(PICTO_COEUR,fmt(rockHP(i)),cx,y4,"#9a1f28");}}}
 
 /* ============ HUD ============ */
 function mkUpg(id){const el=document.getElementById(id);
