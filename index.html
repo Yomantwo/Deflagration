@@ -30,7 +30,10 @@
 
   #topbar{display:flex;gap:7px;align-items:stretch;padding:8px 10px;background:var(--paper2);
     border-bottom:3px solid var(--line);flex-wrap:wrap}
-  .stat{background:var(--panel);border:3px solid var(--line);border-left-width:6px;padding:5px 10px;min-width:104px;box-shadow:var(--sh)}
+  .stat{background:var(--panel);border:3px solid var(--line);border-left-width:6px;padding:5px 10px;min-width:104px;box-shadow:var(--sh);display:flex;align-items:center;gap:8px}
+  .stat .hpic{flex:0 0 auto;width:24px;height:24px}
+  .stat .hpic svg{display:block;width:100%;height:100%}
+  .stat .sc{flex:1 1 auto;min-width:0}
   .stat .k{font-family:var(--disp);font-size:7px;color:var(--dim);letter-spacing:.5px}
   .stat .v{font-size:22px;line-height:1;margin-top:5px;color:var(--ink)}
   .stat .v small{font-size:13px;color:var(--dim)}
@@ -385,6 +388,31 @@ const ROCKS=[
 ];
 const NTYPES=30, CELL=32, RS=2, GLIDE=950, OFFLINE_BASE=3600;
 function rockName(i){return t("rock_"+i);}
+/* ===== Pictos HUD (matrices pixel validées) ===== */
+const HUD_PICTOS={
+ deb:{p:{K:"#3c2f20",L:"#c6b184",H:"#e6d6ae",M:"#8a7556",D:"#4f4130"},rows:[
+  "...KKK....","..KLLLK...",".KLLHMMK..","KLLLHMMMK.","KLLMMMMDK.","KLMMMMDDK.",".KMMMDDDK.","..KMDDDK..","...KKKK..."]},
+ dps:{p:{K:"#3c2f20",L:"#c6b184",H:"#e6d6ae",M:"#8a7556",D:"#4f4130",v:"#9a8a66"},rows:[
+  "......KKK....",".....KLLLK...","vv..KLLHMMK..","...KLLLHMMMK.","vv.KLLMMMMDK.","...KLMMMMDDK.","v...KMMMDDDK.","....KMDDDK...",".....KKKK...."]},
+ pow:{p:{K:"#14100c",g:"#6a625a",G:"#8e867e",m:"#8a6a3a",t:"#7d7268",Y:"#f7d24a",o:"#f0902a"},rows:[
+  ".........YY.",".........Yo.","........m...",".......m....","...KKKKtK...","..KKKKKKKK..",".KKGgKKKKKK.",".KKgKKKKKKK.",".KKKKKKKKKK.",".KKKKKKKKKK.","..KKKKKKKK..","...KKKKKK..."]},
+ raf:{p:{K:"#123844","1":"#4cc4d2","2":"#37aab8","3":"#1f8494","4":"#16697a",T:"#7de2ea",B:"#b9f2f6"},rows:[
+  "...KKKK...","..K1111K..",".K211113K.","K22TTTT33K","K22TBTT33K","K22TTTT33K","K22444433K",".K244443K.","..K4444K..","...KKKK..."]},
+ gri:{p:{l:"#5a4a2a",b:"#b6935a"},rows:[
+  "lllllllllll","lbbbblbbbbl","lbbbblbbbbl","lbbbblbbbbl","lbbbblbbbbl","lllllllllll","lbbbblbbbbl","lbbbblbbbbl","lbbbblbbbbl","lbbbblbbbbl","lllllllllll"]},
+ cen:{p:{a:"#9a9aa2",b:"#77777f",c:"#5c5c64",d:"#3e3e46",e:"#32323a",o:"#f0902a",r:"#e8701a"},rows:[
+  "....aa......","...aaaa.....","..bbbbbbo...",".bbbbbbbbb..",".cccrcccccc.","cccccccccccc","ddddddoddddd","eeeeeeeeeeee"]}};
+function pictoSVG(pic){const rows=pic.rows,h=rows.length,w=rows[0].length;let rects="";
+  for(let r=0;r<h;r++){let c=0;while(c<w){const ch=rows[r][c];if(!pic.p[ch]){c++;continue;}
+    let run=1;while(c+run<w&&rows[r][c+run]===ch)run++;
+    rects+='<rect x="'+c+'" y="'+r+'" width="'+run+'" height="1" fill="'+pic.p[ch]+'"/>';c+=run;}}
+  return '<svg viewBox="0 0 '+w+' '+h+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+rects+'</svg>';}
+function initHudPictos(){document.querySelectorAll("#topbar .stat").forEach(st=>{
+  if(st.querySelector(".hpic"))return;
+  const key=["deb","dps","pow","raf","gri","cen"].find(k=>st.classList.contains(k));if(!key)return;
+  const k=st.querySelector(".k"),v=st.querySelector(".v");if(!k||!v)return;
+  const sc=document.createElement("div");sc.className="sc";st.appendChild(sc);sc.appendChild(k);sc.appendChild(v);
+  const sp=document.createElement("span");sp.className="hpic";sp.innerHTML=pictoSVG(HUD_PICTOS[key]);st.insertBefore(sp,sc);});}
 
 const ROCK_S=[
 [ "....oooooo","..oohhhhhhoo",".ohhhhhhhhhho",".ohhhhhhhhhhho","ohhhhhhhhhhhhho","ohhccchhhccchho",
@@ -581,7 +609,7 @@ function spawnCells(n){const out=[],pref=[[1,1],[2,1],[1,2],[3,1],[1,3],[3,2],[2
   for(const[x,y]of pref){if(out.length>=n)break;if(isFloor(x,y))out.push([x,y]);}
   for(let y=1;y<G.gridN-1&&out.length<n;y++)for(let x=1;x<G.gridN-1&&out.length<n;x++)if(isFloor(x,y)&&!out.some(c=>c[0]===x&&c[1]===y))out.push([x,y]);
   while(out.length<n)out.push([1,1]);return out;}
-function makeBomber(){return{cx:1,cy:1,px:1,py:1,path:null,pi:0,intent:null,face:1,anim:0,frame:0,moving:false};}
+function makeBomber(){return{cx:1,cy:1,px:1,py:1,path:null,pi:0,intent:null,dest:null,face:1,anim:0,frame:0,moving:false};}
 function resetBombers(){const n=numBombers(),cells=spawnCells(n);G.bombers=[];
   for(let i=0;i<n;i++){const b=makeBomber();b.cx=b.px=cells[i][0];b.cy=b.py=cells[i][1];G.bombers.push(b);}}
 function syncBombers(){const n=numBombers();
@@ -640,32 +668,47 @@ function blastCells(cx,cy,range,pierce){const set=[{x:cx,y:cy}];for(const[dx,dy]
 function dangerSet(){const s=new Set();for(const bo of G.bombs)for(const c of blastCells(bo.cx,bo.cy,bo.range,bo.pierce))s.add(c.y*G.gridN+c.x);return s;}
 function ownerBombs(i){let n=0;for(const b of G.bombs)if(b.owner===i)n++;return n;}
 function blastHitsRock(cx,cy){for(const c of blastCells(cx,cy,flameRange(),treePierce())){const cc=cell(c.x,c.y);if(cc&&cc.t===2)return true;}return false;}
-function searchTarget(f,N,rng,prc){let best=-1,bestScore=-1e9;
-  for(const id of f.order){const x=id%N,y=(id-x)/N;let rocks=0,val=0;
-    for(const c of blastCells(x,y,rng,prc)){const cc=cell(c.x,c.y);if(cc&&cc.t===2){rocks++;val+=cc.type+1;}}
+function doomedSet(skipOwner){const s=new Set(),pw=power(),N=G.gridN;
+  for(const bo of G.bombs)for(const c of blastCells(bo.cx,bo.cy,bo.range,bo.pierce)){const cc=cell(c.x,c.y);if(cc&&cc.t===2&&cc.hp<=pw)s.add(c.y*N+c.x);}
+  for(let j=0;j<G.bombers.length;j++){if(j===skipOwner)continue;const ob=G.bombers[j];
+    if(ob&&ob.intent==="bomb"&&ob.dest)for(const c of blastCells(ob.dest.x,ob.dest.y,flameRange(),treePierce())){const cc=cell(c.x,c.y);if(cc&&cc.t===2&&cc.hp<=pw)s.add(c.y*N+c.x);}}
+  return s;}
+function blastHitsFreshRock(cx,cy,i){const doomed=doomedSet(i),N=G.gridN;
+  for(const c of blastCells(cx,cy,flameRange(),treePierce())){const cc=cell(c.x,c.y);if(cc&&cc.t===2&&!doomed.has(c.y*N+c.x))return true;}return false;}
+function bomberAt(x,y,self){for(let j=0;j<G.bombers.length;j++){if(j===self)continue;const o=G.bombers[j];if(o&&o.cx===x&&o.cy===y)return true;}return false;}
+function searchTarget(f,N,rng,prc,doomed,occ){let best=-1,bestScore=-1e9;
+  for(const id of f.order){if(occ&&occ.has(id))continue;const x=id%N,y=(id-x)/N;let rocks=0,val=0;
+    for(const c of blastCells(x,y,rng,prc)){const cc=cell(c.x,c.y);if(cc&&cc.t===2){if(doomed&&doomed.has(c.y*N+c.x))continue;rocks++;val+=cc.type+1;}}
     if(!rocks)continue;const score=rocks*10 - f.dist[id]*0.4 + val*0.05;
     if(score>bestScore){bestScore=score;best=id;}}
   return best;}
 function plan(b,i,danger){const N=G.gridN,here=b.cy*N+b.cx;
-  if(danger.has(here)){const p=bfsEscape(b.cx,b.cy,danger);if(p&&p.length>1){b.path=p;b.pi=0;b.intent="flee";}return;}
-  const rng=flameRange(),prc=treePierce();
-  let f=reachField(b.cx,b.cy,danger,CFG.PLAN_RADIUS),best=searchTarget(f,N,rng,prc);
-  if(best<0){f=reachField(b.cx,b.cy,danger,0);best=searchTarget(f,N,rng,prc);}  // repli : plus rien à portée, on cherche loin
-  if(best<0){b.path=null;b.intent=null;return;}
-  b.path=pathTo(f,b.cx,b.cy,best);b.pi=0;b.intent=(ownerBombs(i)<bombsPerBomber())?"bomb":"stage";}
+  if(danger.has(here)){b.dest=null;const p=bfsEscape(b.cx,b.cy,danger);if(p&&p.length>1){b.path=p;b.pi=0;b.intent="flee";}return;}
+  const rng=flameRange(),prc=treePierce(),doomed=doomedSet(i);
+  const occ=new Set();for(let j=0;j<G.bombers.length;j++){if(j===i)continue;const o=G.bombers[j];if(!o)continue;occ.add(o.cy*N+o.cx);if(o.dest)occ.add(o.dest.y*N+o.dest.x);}
+  let f=reachField(b.cx,b.cy,danger,CFG.PLAN_RADIUS),best=searchTarget(f,N,rng,prc,doomed,occ);
+  if(best<0){f=reachField(b.cx,b.cy,danger,0);best=searchTarget(f,N,rng,prc,doomed,occ);}  // repli : plus rien de frais à portée, on cherche loin
+  if(best<0)best=searchTarget(f,N,rng,prc,null,occ);  // ultime repli : tout est réservé, on retombe sur l'ancien comportement
+  if(best<0){b.path=null;b.intent=null;b.dest=null;return;}
+  b.path=pathTo(f,b.cx,b.cy,best);b.pi=0;b.dest={x:best%N,y:(best-best%N)/N};
+  b.intent=(ownerBombs(i)<bombsPerBomber())?"bomb":"stage";}
 function bombersTick(dt){syncBombers();const danger=dangerSet();let planBudget=1;
   for(let i=0;i<G.bombers.length;i++)planBudget=bomberTick(G.bombers[i],i,dt,danger,planBudget);}
 function bomberTick(b,i,dt,danger,planBudget){b.moving=false;
   if(!b.path&&planBudget>0){plan(b,i,danger);planBudget--;}
-  if(b.path)followPath(b,dt,()=>{const wb=b.intent==="bomb";b.path=null;b.intent=null;
-    if(wb&&ownerBombs(i)<bombsPerBomber()&&blastHitsRock(b.cx,b.cy))placeBomb(b,i);});
+  if(b.path)followPath(b,dt,()=>{const wb=b.intent==="bomb";b.path=null;b.intent=null;b.dest=null;
+    if(wb&&ownerBombs(i)<bombsPerBomber()&&blastHitsFreshRock(b.cx,b.cy,i))placeBomb(b,i);},i);
   if(b.moving){b.anim+=dt;if(b.anim>0.16){b.anim=0;b.frame^=1;}}else b.frame=0;
   return planBudget;}
-function followPath(b,dt,onArrive){
+function followPath(b,dt,onArrive,self){
   if(!isFinite(b.px)||!isFinite(b.py)){b.px=b.cx;b.py=b.cy;}
   if(dt<=0)return;
   if(!b.path||b.pi>=b.path.length){onArrive&&onArrive();return;}
-  const[tx,ty]=b.path[b.pi],dx=tx-b.px,dy=ty-b.py,d=Math.hypot(dx,dy),step=moveSpeed()*dt;
+  const[tx,ty]=b.path[b.pi];
+  if((tx!==b.cx||ty!==b.cy)&&bomberAt(tx,ty,self)){b.wait=(b.wait||0)+dt;
+    if(b.wait>0.6){b.wait=0;b.path=null;b.intent=null;b.dest=null;}return;}
+  b.wait=0;
+  const dx=tx-b.px,dy=ty-b.py,d=Math.hypot(dx,dy),step=moveSpeed()*dt;
   if(d<=step||d===0){b.px=tx;b.py=ty;b.cx=tx;b.cy=ty;b.pi++;if(b.pi>=b.path.length){b.path=null;onArrive&&onArrive();}}
   else{b.px+=dx/d*step;b.py+=dy/d*step;b.moving=true;if(Math.abs(dx)>Math.abs(dy))b.face=dx>0?1:-1;}}
 function effPierce(){return G.fxPerfo>0?99:treePierce();}
@@ -1921,7 +1964,7 @@ function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
   requestAnimationFrame(loop);}
 
 /* ============ INIT ============ */
-function init(){bindUI();const had=load();if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
+function init(){bindUI();initHudPictos();const had=load();if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
   if(G.raff>raffCap())G.raff=raffCap();
   applyLang();
   G.runStartProsp=G.runStartProsp||1;G.dpsSmooth=G.dps||0;
