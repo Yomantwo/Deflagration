@@ -637,11 +637,12 @@ function reachField(sx,sy,blocked,maxDist){const N=G.gridN,dist=new Int32Array(N
   return{dist,prev,order:q};}
 function pathTo(f,sx,sy,id){const path=[],N=G.gridN;let cur=id;while(cur!==-1){const x=cur%N,y=(cur-x)/N;path.push([x,y]);
   if(x===sx&&y===sy)break;cur=f.prev[cur];}path.reverse();return path;}
-function bfsEscape(sx,sy,danger){const N=G.gridN,seen=new Uint8Array(N*N),prev=new Int32Array(N*N).fill(-1);
+function bfsEscape(sx,sy,danger,bOcc){const r=bfsEscapeRun(sx,sy,danger,bOcc);return r||bfsEscapeRun(sx,sy,danger,null);}
+function bfsEscapeRun(sx,sy,danger,blk){const N=G.gridN,seen=new Uint8Array(N*N),prev=new Int32Array(N*N).fill(-1);
   const q=[sy*N+sx];seen[sy*N+sx]=1;let h=0;const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
   while(h<q.length){const id=q[h++],x=id%N,y=(id-x)/N;if(!danger.has(id)){return pathFromPrev(prev,id,N,sx,sy);}
     for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=N||ny>=N)continue;const nid=ny*N+nx;
-      if(seen[nid]||!isFloor(nx,ny))continue;seen[nid]=1;prev[nid]=id;q.push(nid);}}return null;}
+      if(seen[nid]||!isFloor(nx,ny))continue;if(blk&&blk.has(nid))continue;seen[nid]=1;prev[nid]=id;q.push(nid);}}return null;}
 function pathFromPrev(prev,id,N,sx,sy){const path=[];let cur=id;while(cur!==-1){const x=cur%N,y=(cur-x)/N;path.push([x,y]);
   if(x===sx&&y===sy)break;cur=prev[cur];}path.reverse();return path;}
 
@@ -683,11 +684,13 @@ function searchTarget(f,N,rng,prc,doomed,occ){let best=-1,bestScore=-1e9;
     if(score>bestScore){bestScore=score;best=id;}}
   return best;}
 function plan(b,i,danger){const N=G.gridN,here=b.cy*N+b.cx;
-  if(danger.has(here)){b.dest=null;const p=bfsEscape(b.cx,b.cy,danger);if(p&&p.length>1){b.path=p;b.pi=0;b.intent="flee";}return;}
+  const bOcc=new Set();for(let j=0;j<G.bombers.length;j++){if(j===i)continue;const o=G.bombers[j];if(o)bOcc.add(o.cy*N+o.cx);}
+  if(danger.has(here)){b.dest=null;const p=bfsEscape(b.cx,b.cy,danger,bOcc);if(p&&p.length>1){b.path=p;b.pi=0;b.intent="flee";}return;}
   const rng=flameRange(),prc=treePierce(),doomed=doomedSet(i);
-  const occ=new Set();for(let j=0;j<G.bombers.length;j++){if(j===i)continue;const o=G.bombers[j];if(!o)continue;occ.add(o.cy*N+o.cx);if(o.dest)occ.add(o.dest.y*N+o.dest.x);}
-  let f=reachField(b.cx,b.cy,danger,CFG.PLAN_RADIUS),best=searchTarget(f,N,rng,prc,doomed,occ);
-  if(best<0){f=reachField(b.cx,b.cy,danger,0);best=searchTarget(f,N,rng,prc,doomed,occ);}  // repli : plus rien de frais à portée, on cherche loin
+  const blk=new Set(danger);for(const id of bOcc)blk.add(id);
+  const occ=new Set(bOcc);for(let j=0;j<G.bombers.length;j++){if(j===i)continue;const o=G.bombers[j];if(o&&o.dest)occ.add(o.dest.y*N+o.dest.x);}
+  let f=reachField(b.cx,b.cy,blk,CFG.PLAN_RADIUS),best=searchTarget(f,N,rng,prc,doomed,occ);
+  if(best<0){f=reachField(b.cx,b.cy,blk,0);best=searchTarget(f,N,rng,prc,doomed,occ);}  // repli : plus rien de frais à portée, on cherche loin
   if(best<0)best=searchTarget(f,N,rng,prc,null,occ);  // ultime repli : tout est réservé, on retombe sur l'ancien comportement
   if(best<0){b.path=null;b.intent=null;b.dest=null;return;}
   b.path=pathTo(f,b.cx,b.cy,best);b.pi=0;b.dest={x:best%N,y:(best-best%N)/N};
