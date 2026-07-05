@@ -374,7 +374,8 @@ const CFG={
   CENDRE_EXP:0.5,  // exposant de la courbe : cendres = (cumul/X_CENDRE)^EXP (0.5 = racine carrée → Nᵉ cendre à N² × X)
   K_PREST:0.04,    // +4% production par cendre gagnée (multiplicateur de prestige, façon Cookie Clicker)
   CAP_BASE:60, CAP_STEP:8,   // cap de Raffinage = min(1000, BASE + STEP*prestiges)
-  MECHE_MUL:0.99, FUSE_BASE:1.6, FUSE_FLOOR:0.30,
+  MECHE_MUL:0.9889, FUSE_BASE:1.6, FUSE_FLOOR:0.30,  // plancher 0.30s atteint pile au niveau 150
+  MECHE_FLOOR_LVL:150, SPEED_CAP:50, SPEED_CAP_LVL:50, SECOND_LIFE:0.002,  // secondes vies : +0.2%/niv au-delà
   PLAN_RADIUS:22,  // rayon max de recherche de cible des bombers (cases) — borne le BFS
   DPS_TAU:2.5,     // constante de lissage du débris/sec affiché (secondes)
 };
@@ -583,7 +584,7 @@ function bomberSprite(skin,f){const k=skin+'_'+f;if(!bombCache[k]){const s=SKINS
   const pal=Object.assign({},BOMB_PAL,{b:s.b,d:s.d,g:s.g});bombCache[k]=bakeSprite(f?BOMB_B:BOMB_A,pal);}return bombCache[k];}
 
 /* ============ GRILLE & ÉCONOMIE (douce, exponentielle) ============ */
-function raffCap(){return Math.min(1000,CFG.CAP_BASE+CFG.CAP_STEP*G.stats.prestiges);}
+/* Cap de raffinage supprimé : la limite est économique (coût ×1.09 vs production ×1.05). La grille, elle, plafonne à raff 1000 (performance). */
 function gridSizeFor(raff){let n=Math.round(13+(99-13)*(Math.min(raff,1000)-1)/999);if(n%2===0)n++;return Math.max(13,n);}
 function tierWeights(raff){const p=Math.min(1,(raff-1)/GLIDE),mu=1+(NTYPES-1)*p,sig=0.35+1.4*Math.sin(Math.PI*p);
   const w=new Array(NTYPES);let tot=0;for(let i=0;i<NTYPES;i++){const v=Math.exp(-((i+1-mu)**2)/(2*sig*sig));w[i]=v;tot+=v;}
@@ -593,7 +594,7 @@ function dominantType(){const p=Math.min(1,(G.raff-1)/GLIDE);return Math.min(NTY
 function raffScale(){return Math.pow(CFG.G_R,G.raff-1);}
 function prestigeMult(){return 1+CFG.K_PREST*G.cendresEarned;}
 function rockHP(t){return Math.max(1,Math.round((1+t*(4/29))*raffScale()));}
-function rockValue(t){return Math.max(1,Math.round(Math.pow(t+1,1.6)*raffScale()*treeVal()*notoMult()*prestigeMult()*G.runStartProsp));}
+function rockValue(t){return Math.max(1,Math.round(Math.pow(t+1,1.6)*raffScale()*treeVal()*notoMult()*prestigeMult()*G.runStartProsp*Math.pow(1+CFG.SECOND_LIFE,speedSurplus())));}
 function pickFrom(w){let r=Math.random();for(let i=0;i<NTYPES;i++){r-=w[i];if(r<=0)return i;}return NTYPES-1;}
 function newGrid(){const N=G.gridN,g=[],w=tierWeights(G.raff);let rc=0;for(let y=0;y<N;y++){g[y]=[];for(let x=0;x<N;x++){
   let t=0;if(x===0||y===0||x===N-1||y===N-1)t=1;else if(x%2===0&&y%2===0)t=1;else if(Math.random()<0.45)t=2;
@@ -661,8 +662,10 @@ function gainDebris(v){gainDebrisRaw(v*harvestMult());}
 function flameRange(){return Math.min(1+G.upg.flamme+treeRange(), G.gridN-2);}
 function flameAtCap(){return 1+G.upg.flamme+treeRange()>=G.gridN-2;}
 function fuseTime(){return Math.max(CFG.FUSE_FLOOR,CFG.FUSE_BASE*Math.pow(CFG.MECHE_MUL,G.upg.meche)*treeMecheVive());}
-function moveSpeed(){return 3+G.upg.speed*0.9+treeSpeed();}
-function power(){return Math.pow(CFG.G_P,G.upg.puiss);}
+function moveSpeed(){return Math.min(CFG.SPEED_CAP,3+G.upg.speed*0.94+treeSpeed());}
+function mecheSurplus(){return Math.max(0,G.upg.meche-CFG.MECHE_FLOOR_LVL);}
+function speedSurplus(){return Math.max(0,G.upg.speed-CFG.SPEED_CAP_LVL);}
+function power(){return Math.pow(CFG.G_P,G.upg.puiss)*Math.pow(1+CFG.SECOND_LIFE,mecheSurplus());}
 function blastCells(cx,cy,range,pierce){const set=[{x:cx,y:cy}];for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){
   let pierced=0;for(let i=1;i<=range;i++){const x=cx+dx*i,y=cy+dy*i,c=cell(x,y);if(!c||c.t===1)break;set.push({x,y});
     if(c.t===2){pierced++;if(pierced>=pierce)break;}}}return set;}
@@ -709,7 +712,7 @@ function followPath(b,dt,onArrive,self){
   if(!b.path||b.pi>=b.path.length){onArrive&&onArrive();return;}
   const[tx,ty]=b.path[b.pi];
   if((tx!==b.cx||ty!==b.cy)&&bomberAt(tx,ty,self)){b.wait=(b.wait||0)+dt;
-    if(b.wait>0.6){b.wait=0;b.path=null;b.intent=null;b.dest=null;}return;}
+    if(b.wait>0.35+0.25*(self||0)){b.wait=0;b.path=null;b.intent=null;b.dest=null;}return;}
   b.wait=0;
   const dx=tx-b.px,dy=ty-b.py,d=Math.hypot(dx,dy),step=moveSpeed()*dt;
   if(d<=step||d===0){b.px=tx;b.py=ty;b.cx=tx;b.cy=ty;b.pi++;if(b.pi>=b.path.length){b.path=null;onArrive&&onArrive();}}
@@ -781,16 +784,15 @@ function updateFxBar(){const el=document.getElementById("fxbar");if(!el)return;
   if(html!==_fxLast){_fxLast=html;el.innerHTML=html;}}
 
 /* ============ ACHAT D'AMÉLIORATIONS ============ */
-const COSTS={flamme:[100,1.11],meche:[50,1.11],speed:[45,1.11],puiss:[70,1.09],raff:[35,1.09]};
+const COSTS={flamme:[100,1.45],meche:[50,1.11],speed:[45,1.11],puiss:[70,1.09],raff:[35,1.09]};
 function curLvl(k){return k==="raff"?(G.raff-1):G.upg[k];}
 function unitCost(k,lv){const[b,m]=COSTS[k];return Math.max(1,Math.floor(b*Math.pow(m,lv)*treeCost()));}
 function cost(k){return unitCost(k,curLvl(k));}
 function sumCost(k,lv,n){let s=0;for(let i=0;i<n;i++)s+=unitCost(k,lv+i);return s;}
-function maxAffordable(k){let lv=curLvl(k),n=0,spent=0;const cap=(k==="raff")?(raffCap()-1):Infinity;
-  while(n<100000){if(k==="raff"&&lv>=cap)break;const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return{n,spent};}
+function maxAffordable(k){let lv=curLvl(k),n=0,spent=0;
+  while(n<100000){const c=unitCost(k,lv);if(spent+c>G.debris)break;spent+=c;lv++;n++;}return{n,spent};}
 function targetN(k){if(G.buyMult==="max")return maxAffordable(k).n;
   const step=G.buyMult,L=(k==="raff")?G.raff:G.upg[k];let tgt=step-(L%step);
-  if(k==="raff")tgt=Math.min(tgt,Math.max(0,raffCap()-G.raff));
   if(k==="flamme")tgt=Math.min(tgt,Math.max(0,(G.gridN-2)-(1+G.upg.flamme+treeRange())));
   return tgt;}
 function wantN(k){if(G.buyMult==="max")return maxAffordable(k).n;
@@ -806,8 +808,8 @@ function nextCendreInfo(){const X=CFG.X_CENDRE,a=CFG.CENDRE_EXP,mult=treeCendres
   const prog=hi>lo?Math.min(1,Math.max(0,(D-lo)/(hi-lo))):0;
   return{prog,remaining:Math.max(0,hi-D),cur};}
 function prestigeGain(){return Math.max(0,totalEarnable()-G.cendresEarned);}
-function applyRunStart(){const cap=raffCap(),frac=treeHeadRaffFrac();
-  const startR=Math.max(1,Math.floor(cap*frac));
+function applyRunStart(){const rec=Math.max(1,G.stats.maxRaff||1),frac=treeHeadRaffFrac();
+  const startR=Math.max(1,Math.floor(rec*frac));
   G.raff=startR;if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
   const su=treeStartUpg();
   G.upg={flamme:su,meche:su,speed:su,puiss:Math.max(0,startR-3)};
@@ -818,7 +820,7 @@ function doPrestige(){const gain=prestigeGain();if(gain<1)return;
   G.peakRate=0;G.frenzy=0;G.fxSurch=0;G.fxEssaim=0;G.fxPerfo=0;G.filon=0;G.golden=null;G.goldT=75;G.bombs.length=0;
   applyRunStart();
   G.debris=Math.floor(peak*treeHeadStartSec());
-  respawn();sfx("prestige");toast(t("toast_detonation",{n:gain,cap:raffCap()}));refreshTree();}
+  respawn();sfx("prestige");toast(t("toast_detonation",{n:gain}));refreshTree();}
 
 function nodeCost(n){const lvl=tl(n.id);if(n.type==="niv")return Math.floor(n.base*Math.pow(n.mul,lvl));return n.base;}
 function nodeMax(n){return n.type==="niv"?(n.max||5):1;}
@@ -1070,15 +1072,14 @@ function updateHUD(){
   document.getElementById("s-deb").textContent=fmt(G.debris);
   document.getElementById("s-dps").textContent=fmt(G.dpsSmooth);
   document.getElementById("s-pow").textContent=fmtPow(power());
-  document.getElementById("s-raff").innerHTML=G.raff+' <small>/ '+raffCap()+'</small>';
+  document.getElementById("s-raff").innerHTML=G.raff+' <small>Niv</small>';
   document.getElementById("s-grid").textContent=G.gridN+' × '+G.gridN;
   document.getElementById("s-cen").innerHTML=fmt(G.cendres)+' <small>×'+prestigeMult().toFixed(2)+'</small>';
-  const atCap=G.raff>=raffCap();
-  setUpg(U.raff,"raff",t("up_raff_nm"),G.raff,atCap?t("up_raff_cap"):t("up_raff_ef",{m:CFG.G_R}));
-  U.raff.el.classList.toggle("cant",atCap||wantN("raff")<1);
+  setUpg(U.raff,"raff",t("up_raff_nm"),G.raff,t("up_raff_ef",{m:CFG.G_R}));
+  U.raff.el.classList.toggle("cant",wantN("raff")<1);
   {const fc=flameAtCap();setUpg(U.flamme,"flamme",t("up_flamme_nm"),G.upg.flamme,fc?t("up_flamme_cap"):t("up_flamme_ef",{n:flameRange()}));U.flamme.el.classList.toggle("cant",fc||wantN("flamme")<1);}
-  setUpg(U.meche,"meche",t("up_meche_nm"),G.upg.meche,t("up_meche_ef",{n:fuseTime().toFixed(2)}));
-  setUpg(U.speed,"speed",t("up_speed_nm"),G.upg.speed,t("up_speed_ef",{n:moveSpeed().toFixed(1)}));
+  setUpg(U.meche,"meche",t("up_meche_nm"),G.upg.meche,mecheSurplus()>0?t("up_meche_ef2",{b:(mecheSurplus()*CFG.SECOND_LIFE*100).toFixed(1)}):t("up_meche_ef",{n:fuseTime().toFixed(2)}));
+  setUpg(U.speed,"speed",t("up_speed_nm"),G.upg.speed,speedSurplus()>0?t("up_speed_ef2",{b:(speedSurplus()*CFG.SECOND_LIFE*100).toFixed(1)}):t("up_speed_ef",{n:moveSpeed().toFixed(1)}));
   setUpg(U.puiss,"puiss",t("up_puiss_nm"),G.upg.puiss,t("up_puiss_ef",{d:fmtPow(power()),p:Math.round((CFG.G_P-1)*100)}));
   let on=0;for(const[id]of ACH){if(G.ach[id]){on++;document.getElementById("ach-"+id).classList.add("on");}}
   document.getElementById("ach-sum").textContent=on+"/"+ACH.length+" · ×"+notoMult().toFixed(2);
@@ -1174,23 +1175,23 @@ const I18N={fr:{
   side_upgrades:"Améliorations",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Achievements",side_game:"Partie",
   side_save:"SAUVEGARDER",side_save_note:"Sauvegarde auto toutes les 15 s.",
   side_mystery:"Quelque chose se prépare dans les profondeurs…",
-  raff_desc:"Raffine la roche : grille plus grande, PV et valeur plus élevés. Plafond actuel selon ton prestige.",
+  raff_desc:"Raffine la roche : grille plus grande, PV et valeur plus élevés. Sans plafond — seul le prix te freine.",
   opt_validate:"VALIDER",opt_saved:"Modifications enregistrées ✓",
   opt_exported_copied:"Code exporté et copié dans le presse-papier.",opt_exported_manual:"Code exporté — sélectionne-le et copie-le.",
   opt_paste_first:"Colle d'abord un code dans le champ.",opt_import_ok:"Import réussi — rechargement…",opt_import_bad:"Code invalide — rien n'a été modifié.",
   up_level:"Niv",debris:"débris",
-  up_raff_nm:"Raffinage",up_raff_ef:"+{m}× valeur & PV",up_raff_cap:"⛔ Cap atteint — détone pour le repousser",
+  up_raff_nm:"Raffinage",up_raff_ef:"+{m}× valeur & PV",
   up_flamme_nm:"Flamme",up_flamme_ef:"Portée : {n} cases",
   up_flamme_cap:"⛔ Cap atteint — agrandis la grille",pop_back_title:"BON RETOUR",pop_back_time:"{m} min hors-ligne",
-  up_meche_nm:"Mèche",up_meche_ef:"Délai : {n} s",
-  up_speed_nm:"Vitesse",up_speed_ef:"Vitesse : {n} c/s",
+  up_meche_nm:"Mèche",up_meche_ef:"Délai : {n} s",up_meche_ef2:"Délai : 0.30 s (min) · +{b}% puissance",
+  up_speed_nm:"Vitesse",up_speed_ef:"Vitesse : {n} c/s",up_speed_ef2:"Vitesse : 50 c/s (max) · +{b}% récolte",
   up_puiss_nm:"Puissance",up_puiss_ef:"Dégâts {d} /coup (+{p}%/niv)",
   ach_d1:"Détruire 50 roches",ach_d2:"Détruire 500 roches",ach_d3:"Détruire 5 000 roches",ach_d4:"Détruire 50 000 roches",ach_d5:"Détruire 500 000 roches",
   ach_r1:"Raffinage 50",ach_r2:"Raffinage 150",ach_r3:"Raffinage 400",ach_r4:"Raffinage 700",ach_r5:"Raffinage 1000",
   ach_g1:"1 roche dorée",ach_g2:"25 roches dorées",ach_g3:"100 roches dorées",
   ach_p1:"1er prestige",ach_p2:"10 prestiges",ach_p3:"50 prestiges",ach_p4:"Arbre complété",
   toast_achievement:"ACHIEVEMENT",toast_respec:"RESPEC\ncendres rendues",
-  toast_detonation:"DÉTONATION\n+{n} cendres · cap raff {cap}",
+  toast_detonation:"DÉTONATION\n+{n} cendres",
   toast_offline:"DE RETOUR\n+{n} débris ({m} min hors-ligne)",
   toast_notenough:"Pas assez de débris cumulés\npour détoner",
   dlg_reset:"Effacer DÉFINITIVEMENT ta partie ? Action irréversible.",
@@ -1210,7 +1211,7 @@ const I18N={fr:{
   node_surch2_nm:"Surcharge II",node_surch2_desc:"+1 bombe simultanée par bomber (→3)",
   node_mechev_nm:"Mèche vive",node_mechev_desc:"Délai d'explosion ×0.85 (permanent)",
   node_elan1_nm:"Démarrage à chaud",node_elan1_desc:"Commence chaque run avec {s} s de production de pointe",
-  node_reprise_nm:"Reprise de raffinage",node_reprise_desc:"Démarre les runs à {p}% de ton cap de Raffinage",
+  node_reprise_nm:"Reprise de raffinage",node_reprise_desc:"Démarre les runs à {p}% de ton record de Raffinage",
   node_etincelle_nm:"Première étincelle",node_etincelle_desc:"Commence chaque run avec Flamme / Mèche / Vitesse niv. 5",
   node_temp1_nm:"Mémoire",node_temp1_desc:"+1 h de plafond hors-ligne par niveau ({h} h)",
   node_rendem_nm:"Glanage",node_rendem_desc:"Rendement hors-ligne {p}% de la production",
@@ -1260,23 +1261,23 @@ en:{
   side_upgrades:"Upgrades",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Achievements",side_game:"Game",
   side_save:"SAVE",side_save_note:"Auto-save every 15 s.",
   side_mystery:"Something is stirring in the depths…",
-  raff_desc:"Refines the rock: bigger grid, higher HP and value. Current cap depends on your prestige.",
+  raff_desc:"Refines the rock: bigger grid, higher HP and value. No cap — only the price slows you down.",
   opt_validate:"CONFIRM",opt_saved:"Changes saved ✓",
   opt_exported_copied:"Code exported and copied to clipboard.",opt_exported_manual:"Code exported — select and copy it.",
   opt_paste_first:"Paste a code in the field first.",opt_import_ok:"Import successful — reloading…",opt_import_bad:"Invalid code — nothing was changed.",
   up_level:"Lv",debris:"debris",
-  up_raff_nm:"Refining",up_raff_ef:"+{m}× value & HP",up_raff_cap:"⛔ Cap reached — detonate to push it back",
+  up_raff_nm:"Refining",up_raff_ef:"+{m}× value & HP",
   up_flamme_nm:"Flame",up_flamme_ef:"Range: {n} cells",
   up_flamme_cap:"⛔ Cap reached — enlarge the grid",pop_back_title:"WELCOME BACK",pop_back_time:"{m} min offline",
-  up_meche_nm:"Fuse",up_meche_ef:"Delay: {n} s",
-  up_speed_nm:"Speed",up_speed_ef:"Speed: {n} c/s",
+  up_meche_nm:"Fuse",up_meche_ef:"Delay: {n} s",up_meche_ef2:"Delay: 0.30 s (min) · +{b}% power",
+  up_speed_nm:"Speed",up_speed_ef:"Speed: {n} c/s",up_speed_ef2:"Speed: 50 c/s (max) · +{b}% harvest",
   up_puiss_nm:"Power",up_puiss_ef:"Damage {d} /hit (+{p}%/lv)",
   ach_d1:"Destroy 50 rocks",ach_d2:"Destroy 500 rocks",ach_d3:"Destroy 5,000 rocks",ach_d4:"Destroy 50,000 rocks",ach_d5:"Destroy 500,000 rocks",
   ach_r1:"Refining 50",ach_r2:"Refining 150",ach_r3:"Refining 400",ach_r4:"Refining 700",ach_r5:"Refining 1000",
   ach_g1:"1 golden rock",ach_g2:"25 golden rocks",ach_g3:"100 golden rocks",
   ach_p1:"1st prestige",ach_p2:"10 prestiges",ach_p3:"50 prestiges",ach_p4:"Tree completed",
   toast_achievement:"ACHIEVEMENT",toast_respec:"RESPEC\nashes refunded",
-  toast_detonation:"DETONATION\n+{n} ashes · raff cap {cap}",
+  toast_detonation:"DETONATION\n+{n} ashes",
   toast_offline:"WELCOME BACK\n+{n} debris ({m} min offline)",
   toast_notenough:"Not enough total debris\nto detonate",
   dlg_reset:"PERMANENTLY erase your game? This cannot be undone.",
@@ -1296,7 +1297,7 @@ en:{
   node_surch2_nm:"Overload II",node_surch2_desc:"+1 simultaneous bomb per bomber (→3)",
   node_mechev_nm:"Quick fuse",node_mechev_desc:"Explosion delay ×0.85 (permanent)",
   node_elan1_nm:"Warm start",node_elan1_desc:"Start each run with {s} s of peak production",
-  node_reprise_nm:"Refining resume",node_reprise_desc:"Start runs at {p}% of your Refining cap",
+  node_reprise_nm:"Refining resume",node_reprise_desc:"Start runs at {p}% of your Refining record",
   node_etincelle_nm:"First spark",node_etincelle_desc:"Start each run with Flame / Fuse / Speed lv. 5",
   node_temp1_nm:"Memory",node_temp1_desc:"+1 h offline cap per level ({h} h)",
   node_rendem_nm:"Gleaning",node_rendem_desc:"Offline yield {p}% of production",
@@ -1346,23 +1347,23 @@ es:{
   side_upgrades:"Mejoras",side_bomber:"Bomber",side_prestige:"Prestigio",side_ach:"Logros",side_game:"Partida",
   side_save:"GUARDAR",side_save_note:"Autoguardado cada 15 s.",
   side_mystery:"Algo se prepara en las profundidades…",
-  raff_desc:"Refina la roca: rejilla más grande, más PV y valor. El tope actual depende de tu prestigio.",
+  raff_desc:"Refina la roca: rejilla más grande, más PV y valor. Sin tope — solo el precio te frena.",
   opt_validate:"CONFIRMAR",opt_saved:"Cambios guardados ✓",
   opt_exported_copied:"Código exportado y copiado al portapapeles.",opt_exported_manual:"Código exportado — selecciónalo y cópialo.",
   opt_paste_first:"Pega primero un código en el campo.",opt_import_ok:"Importación correcta — recargando…",opt_import_bad:"Código no válido — no se cambió nada.",
   up_level:"Nv",debris:"escombros",
-  up_raff_nm:"Refinado",up_raff_ef:"+{m}× valor y PV",up_raff_cap:"⛔ Tope alcanzado — detona para subirlo",
+  up_raff_nm:"Refinado",up_raff_ef:"+{m}× valor y PV",
   up_flamme_nm:"Llama",up_flamme_ef:"Alcance: {n} casillas",
   up_flamme_cap:"⛔ Tope alcanzado — agranda la rejilla",pop_back_title:"BIENVENIDO",pop_back_time:"{m} min sin conexión",
-  up_meche_nm:"Mecha",up_meche_ef:"Retardo: {n} s",
-  up_speed_nm:"Velocidad",up_speed_ef:"Velocidad: {n} c/s",
+  up_meche_nm:"Mecha",up_meche_ef:"Retardo: {n} s",up_meche_ef2:"Retardo: 0.30 s (mín) · +{b}% potencia",
+  up_speed_nm:"Velocidad",up_speed_ef:"Velocidad: {n} c/s",up_speed_ef2:"Velocidad: 50 c/s (máx) · +{b}% cosecha",
   up_puiss_nm:"Potencia",up_puiss_ef:"Daño {d} /golpe (+{p}%/nv)",
   ach_d1:"Destruir 50 rocas",ach_d2:"Destruir 500 rocas",ach_d3:"Destruir 5.000 rocas",ach_d4:"Destruir 50.000 rocas",ach_d5:"Destruir 500.000 rocas",
   ach_r1:"Refinado 50",ach_r2:"Refinado 150",ach_r3:"Refinado 400",ach_r4:"Refinado 700",ach_r5:"Refinado 1000",
   ach_g1:"1 roca dorada",ach_g2:"25 rocas doradas",ach_g3:"100 rocas doradas",
   ach_p1:"1er prestigio",ach_p2:"10 prestigios",ach_p3:"50 prestigios",ach_p4:"Árbol completado",
   toast_achievement:"LOGRO",toast_respec:"REASIGNAR\ncenizas devueltas",
-  toast_detonation:"DETONACIÓN\n+{n} cenizas · tope ref. {cap}",
+  toast_detonation:"DETONACIÓN\n+{n} cenizas",
   toast_offline:"DE VUELTA\n+{n} escombros ({m} min sin conexión)",
   toast_notenough:"Escombros totales insuficientes\npara detonar",
   dlg_reset:"¿Borrar tu partida DEFINITIVAMENTE? Acción irreversible.",
@@ -1382,7 +1383,7 @@ es:{
   node_surch2_nm:"Sobrecarga II",node_surch2_desc:"+1 bomba simultánea por bomber (→3)",
   node_mechev_nm:"Mecha rápida",node_mechev_desc:"Retardo de explosión ×0.85 (permanente)",
   node_elan1_nm:"Arranque en caliente",node_elan1_desc:"Empieza cada run con {s} s de producción máxima",
-  node_reprise_nm:"Reanudar refinado",node_reprise_desc:"Empieza las runs al {p}% de tu tope de Refinado",
+  node_reprise_nm:"Reanudar refinado",node_reprise_desc:"Empieza las runs al {p}% de tu récord de Refinado",
   node_etincelle_nm:"Primera chispa",node_etincelle_desc:"Empieza cada run con Llama / Mecha / Velocidad nv. 5",
   node_temp1_nm:"Memoria",node_temp1_desc:"+1 h de tope sin conexión por nivel ({h} h)",
   node_rendem_nm:"Espigueo",node_rendem_desc:"Rendimiento sin conexión {p}% de la producción",
@@ -1432,23 +1433,23 @@ it:{
   side_upgrades:"Potenziamenti",side_bomber:"Bomber",side_prestige:"Prestigio",side_ach:"Obiettivi",side_game:"Partita",
   side_save:"SALVA",side_save_note:"Salvataggio automatico ogni 15 s.",
   side_mystery:"Qualcosa si prepara nelle profondità…",
-  raff_desc:"Raffina la roccia: griglia più grande, più PV e valore. Il tetto attuale dipende dal tuo prestigio.",
+  raff_desc:"Raffina la roccia: griglia più grande, più PV e valore. Nessun tetto — solo il prezzo ti frena.",
   opt_validate:"CONFERMA",opt_saved:"Modifiche salvate ✓",
   opt_exported_copied:"Codice esportato e copiato negli appunti.",opt_exported_manual:"Codice esportato — selezionalo e copialo.",
   opt_paste_first:"Incolla prima un codice nel campo.",opt_import_ok:"Importazione riuscita — ricaricamento…",opt_import_bad:"Codice non valido — nulla è stato modificato.",
   up_level:"Liv",debris:"detriti",
-  up_raff_nm:"Raffinazione",up_raff_ef:"+{m}× valore e PV",up_raff_cap:"⛔ Tetto raggiunto — detona per spingerlo",
+  up_raff_nm:"Raffinazione",up_raff_ef:"+{m}× valore e PV",
   up_flamme_nm:"Fiamma",up_flamme_ef:"Portata: {n} caselle",
   up_flamme_cap:"⛔ Tetto raggiunto — ingrandisci la griglia",pop_back_title:"BENTORNATO",pop_back_time:"{m} min offline",
-  up_meche_nm:"Miccia",up_meche_ef:"Ritardo: {n} s",
-  up_speed_nm:"Velocità",up_speed_ef:"Velocità: {n} c/s",
+  up_meche_nm:"Miccia",up_meche_ef:"Ritardo: {n} s",up_meche_ef2:"Ritardo: 0.30 s (min) · +{b}% potenza",
+  up_speed_nm:"Velocità",up_speed_ef:"Velocità: {n} c/s",up_speed_ef2:"Velocità: 50 c/s (max) · +{b}% raccolta",
   up_puiss_nm:"Potenza",up_puiss_ef:"Danno {d} /colpo (+{p}%/liv)",
   ach_d1:"Distruggi 50 rocce",ach_d2:"Distruggi 500 rocce",ach_d3:"Distruggi 5.000 rocce",ach_d4:"Distruggi 50.000 rocce",ach_d5:"Distruggi 500.000 rocce",
   ach_r1:"Raffinazione 50",ach_r2:"Raffinazione 150",ach_r3:"Raffinazione 400",ach_r4:"Raffinazione 700",ach_r5:"Raffinazione 1000",
   ach_g1:"1 roccia dorata",ach_g2:"25 rocce dorate",ach_g3:"100 rocce dorate",
   ach_p1:"1° prestigio",ach_p2:"10 prestigi",ach_p3:"50 prestigi",ach_p4:"Albero completato",
   toast_achievement:"OBIETTIVO",toast_respec:"RIASSEGNA\nceneri restituite",
-  toast_detonation:"DETONAZIONE\n+{n} ceneri · tetto raff {cap}",
+  toast_detonation:"DETONAZIONE\n+{n} ceneri",
   toast_offline:"BENTORNATO\n+{n} detriti ({m} min offline)",
   toast_notenough:"Detriti totali insufficienti\nper detonare",
   dlg_reset:"Cancellare DEFINITIVAMENTE la partita? Azione irreversibile.",
@@ -1468,7 +1469,7 @@ it:{
   node_surch2_nm:"Sovraccarico II",node_surch2_desc:"+1 bomba simultanea per bomber (→3)",
   node_mechev_nm:"Miccia rapida",node_mechev_desc:"Ritardo d'esplosione ×0.85 (permanente)",
   node_elan1_nm:"Avvio a caldo",node_elan1_desc:"Inizia ogni run con {s} s di produzione di punta",
-  node_reprise_nm:"Ripresa raffinazione",node_reprise_desc:"Inizia le run al {p}% del tuo tetto di Raffinazione",
+  node_reprise_nm:"Ripresa raffinazione",node_reprise_desc:"Inizia le run al {p}% del tuo record di Raffinazione",
   node_etincelle_nm:"Prima scintilla",node_etincelle_desc:"Inizia ogni run con Fiamma / Miccia / Velocità liv. 5",
   node_temp1_nm:"Memoria",node_temp1_desc:"+1 h di tetto offline per livello ({h} h)",
   node_rendem_nm:"Spigolatura",node_rendem_desc:"Rendimento offline {p}% della produzione",
@@ -1518,23 +1519,23 @@ de:{
   side_upgrades:"Verbesserungen",side_bomber:"Bomber",side_prestige:"Prestige",side_ach:"Erfolge",side_game:"Spiel",
   side_save:"SPEICHERN",side_save_note:"Auto-Speichern alle 15 s.",
   side_mystery:"Etwas regt sich in der Tiefe…",
-  raff_desc:"Veredelt den Felsen: größeres Gitter, höhere LP und Wert. Aktuelle Grenze je nach Prestige.",
+  raff_desc:"Veredelt den Felsen: größeres Gitter, höhere LP und Wert. Ohne Grenze — nur der Preis bremst dich.",
   opt_validate:"BESTÄTIGEN",opt_saved:"Änderungen gespeichert ✓",
   opt_exported_copied:"Code exportiert und in die Zwischenablage kopiert.",opt_exported_manual:"Code exportiert — markiere und kopiere ihn.",
   opt_paste_first:"Füge zuerst einen Code in das Feld ein.",opt_import_ok:"Import erfolgreich — wird neu geladen…",opt_import_bad:"Ungültiger Code — nichts wurde geändert.",
   up_level:"St",debris:"Schutt",
-  up_raff_nm:"Veredelung",up_raff_ef:"+{m}× Wert & LP",up_raff_cap:"⛔ Grenze erreicht — zünde, um sie anzuheben",
+  up_raff_nm:"Veredelung",up_raff_ef:"+{m}× Wert & LP",
   up_flamme_nm:"Flamme",up_flamme_ef:"Reichweite: {n} Felder",
   up_flamme_cap:"⛔ Grenze erreicht — vergrößere das Gitter",pop_back_title:"WILLKOMMEN ZURÜCK",pop_back_time:"{m} Min offline",
-  up_meche_nm:"Zünder",up_meche_ef:"Verzögerung: {n} s",
-  up_speed_nm:"Tempo",up_speed_ef:"Tempo: {n} F/s",
+  up_meche_nm:"Zünder",up_meche_ef:"Verzögerung: {n} s",up_meche_ef2:"Verzögerung: 0.30 s (min) · +{b}% Stärke",
+  up_speed_nm:"Tempo",up_speed_ef:"Tempo: {n} F/s",up_speed_ef2:"Tempo: 50 F/s (max) · +{b}% Ernte",
   up_puiss_nm:"Stärke",up_puiss_ef:"Schaden {d} /Treffer (+{p}%/St)",
   ach_d1:"50 Felsen zerstören",ach_d2:"500 Felsen zerstören",ach_d3:"5.000 Felsen zerstören",ach_d4:"50.000 Felsen zerstören",ach_d5:"500.000 Felsen zerstören",
   ach_r1:"Veredelung 50",ach_r2:"Veredelung 150",ach_r3:"Veredelung 400",ach_r4:"Veredelung 700",ach_r5:"Veredelung 1000",
   ach_g1:"1 goldener Fels",ach_g2:"25 goldene Felsen",ach_g3:"100 goldene Felsen",
   ach_p1:"1. Prestige",ach_p2:"10 Prestige",ach_p3:"50 Prestige",ach_p4:"Baum vollständig",
   toast_achievement:"ERFOLG",toast_respec:"RESPEC\nAsche erstattet",
-  toast_detonation:"DETONATION\n+{n} Asche · Ver.-Grenze {cap}",
+  toast_detonation:"DETONATION\n+{n} Asche",
   toast_offline:"WILLKOMMEN ZURÜCK\n+{n} Schutt ({m} Min offline)",
   toast_notenough:"Nicht genug Gesamt-Schutt\nzum Zünden",
   dlg_reset:"Spiel ENDGÜLTIG löschen? Nicht rückgängig machbar.",
@@ -1554,7 +1555,7 @@ de:{
   node_surch2_nm:"Überladung II",node_surch2_desc:"+1 gleichzeitige Bombe pro Bomber (→3)",
   node_mechev_nm:"Kurzer Zünder",node_mechev_desc:"Explosionsverzögerung ×0.85 (permanent)",
   node_elan1_nm:"Warmstart",node_elan1_desc:"Beginne jeden Run mit {s} s Spitzenproduktion",
-  node_reprise_nm:"Veredelungs-Fortsetzung",node_reprise_desc:"Starte Runs bei {p}% deiner Veredelungsgrenze",
+  node_reprise_nm:"Veredelungs-Fortsetzung",node_reprise_desc:"Starte Runs bei {p}% deines Veredelungsrekords",
   node_etincelle_nm:"Erster Funke",node_etincelle_desc:"Beginne jeden Run mit Flamme / Zünder / Tempo St. 5",
   node_temp1_nm:"Gedächtnis",node_temp1_desc:"+1 h Offline-Grenze pro Stufe ({h} h)",
   node_rendem_nm:"Nachlese",node_rendem_desc:"Offline-Ertrag {p}% der Produktion",
@@ -1604,23 +1605,23 @@ ja:{
   side_upgrades:"アップグレード",side_bomber:"ボンバー",side_prestige:"プレステージ",side_ach:"実績",side_game:"ゲーム",
   side_save:"セーブ",side_save_note:"15秒ごとに自動セーブ。",
   side_mystery:"深部で何かが動き出している…",
-  raff_desc:"岩を精錬：グリッド拡大、HPと価値が上昇。上限は現在のプレステージ次第。",
+  raff_desc:"岩を精錬：グリッド拡大、HPと価値が上昇。上限なし — 価格だけが壁。",
   opt_validate:"確定",opt_saved:"変更を保存しました ✓",
   opt_exported_copied:"コードをエクスポートしてクリップボードにコピーしました。",opt_exported_manual:"コードをエクスポート — 選択してコピーしてください。",
   opt_paste_first:"先に欄へコードを貼り付けてください。",opt_import_ok:"インポート成功 — 再読み込み中…",opt_import_bad:"無効なコード — 変更されませんでした。",
   up_level:"Lv",debris:"瓦礫",
-  up_raff_nm:"精錬",up_raff_ef:"+{m}× 価値 & HP",up_raff_cap:"⛔ 上限到達 — 起爆で押し上げる",
+  up_raff_nm:"精錬",up_raff_ef:"+{m}× 価値 & HP",
   up_flamme_nm:"炎",up_flamme_ef:"射程：{n} マス",
   up_flamme_cap:"⛔ 上限到達 — グリッドを広げる",pop_back_title:"おかえり",pop_back_time:"{m} 分オフライン",
-  up_meche_nm:"導火線",up_meche_ef:"遅延：{n} 秒",
-  up_speed_nm:"速度",up_speed_ef:"速度：{n} マス/秒",
+  up_meche_nm:"導火線",up_meche_ef:"遅延：{n} 秒",up_meche_ef2:"遅延：0.30 秒（最小）· 威力 +{b}%",
+  up_speed_nm:"速度",up_speed_ef:"速度：{n} マス/秒",up_speed_ef2:"速度：50 マス/秒（最大）· 収穫 +{b}%",
   up_puiss_nm:"威力",up_puiss_ef:"ダメージ {d} /発 (+{p}%/Lv)",
   ach_d1:"岩を50個破壊",ach_d2:"岩を500個破壊",ach_d3:"岩を5,000個破壊",ach_d4:"岩を50,000個破壊",ach_d5:"岩を500,000個破壊",
   ach_r1:"精錬 50",ach_r2:"精錬 150",ach_r3:"精錬 400",ach_r4:"精錬 700",ach_r5:"精錬 1000",
   ach_g1:"金の岩 1個",ach_g2:"金の岩 25個",ach_g3:"金の岩 100個",
   ach_p1:"初プレステージ",ach_p2:"プレステージ 10回",ach_p3:"プレステージ 50回",ach_p4:"ツリー完成",
   toast_achievement:"実績",toast_respec:"振り直し\n灰を返却",
-  toast_detonation:"起爆\n+{n} 灰 · 精錬上限 {cap}",
+  toast_detonation:"起爆\n+{n} 灰",
   toast_offline:"おかえり\n+{n} 瓦礫 ({m} 分オフライン)",
   toast_notenough:"累計瓦礫が不足\n起爆できません",
   dlg_reset:"ゲームを完全に消去しますか？取り消せません。",
@@ -1640,7 +1641,7 @@ ja:{
   node_surch2_nm:"過負荷 II",node_surch2_desc:"ボンバーごとに同時爆弾 +1 (→3)",
   node_mechev_nm:"速い導火線",node_mechev_desc:"爆発遅延 ×0.85（永続）",
   node_elan1_nm:"ウォームスタート",node_elan1_desc:"各ランを {s} 秒のピーク生産で開始",
-  node_reprise_nm:"精錬再開",node_reprise_desc:"精錬上限の {p}% からランを開始",
+  node_reprise_nm:"精錬再開",node_reprise_desc:"精錬記録の {p}% からランを開始",
   node_etincelle_nm:"最初の火花",node_etincelle_desc:"各ランを 炎/導火線/速度 Lv5 で開始",
   node_temp1_nm:"記憶",node_temp1_desc:"レベルごとにオフライン上限 +1時間 ({h} 時間)",
   node_rendem_nm:"落穂拾い",node_rendem_desc:"オフライン収益 生産の {p}%",
@@ -1690,23 +1691,23 @@ zh:{
   side_upgrades:"升级",side_bomber:"炸弹人",side_prestige:"转生",side_ach:"成就",side_game:"游戏",
   side_save:"保存",side_save_note:"每15秒自动保存。",
   side_mystery:"深处有什么正在苏醒…",
-  raff_desc:"精炼岩石：网格更大，HP与价值更高。当前上限取决于你的转生。",
+  raff_desc:"精炼岩石：网格更大，HP与价值更高。没有上限 — 只有价格限制你。",
   opt_validate:"确认",opt_saved:"更改已保存 ✓",
   opt_exported_copied:"代码已导出并复制到剪贴板。",opt_exported_manual:"代码已导出 — 请选择并复制。",
   opt_paste_first:"请先在栏中粘贴代码。",opt_import_ok:"导入成功 — 正在重新加载…",opt_import_bad:"无效代码 — 未做任何更改。",
   up_level:"Lv",debris:"碎石",
-  up_raff_nm:"精炼",up_raff_ef:"+{m}× 价值 & HP",up_raff_cap:"⛔ 已达上限 — 引爆以提升",
+  up_raff_nm:"精炼",up_raff_ef:"+{m}× 价值 & HP",
   up_flamme_nm:"火焰",up_flamme_ef:"范围：{n} 格",
   up_flamme_cap:"⛔ 已达上限 — 扩大网格",pop_back_title:"欢迎回来",pop_back_time:"离线 {m} 分钟",
-  up_meche_nm:"引信",up_meche_ef:"延迟：{n} 秒",
-  up_speed_nm:"速度",up_speed_ef:"速度：{n} 格/秒",
+  up_meche_nm:"引信",up_meche_ef:"延迟：{n} 秒",up_meche_ef2:"延迟：0.30 秒（最小）· 威力 +{b}%",
+  up_speed_nm:"速度",up_speed_ef:"速度：{n} 格/秒",up_speed_ef2:"速度：50 格/秒（最大）· 采集 +{b}%",
   up_puiss_nm:"威力",up_puiss_ef:"伤害 {d} /击 (+{p}%/级)",
   ach_d1:"摧毁50块岩石",ach_d2:"摧毁500块岩石",ach_d3:"摧毁5,000块岩石",ach_d4:"摧毁50,000块岩石",ach_d5:"摧毁500,000块岩石",
   ach_r1:"精炼 50",ach_r2:"精炼 150",ach_r3:"精炼 400",ach_r4:"精炼 700",ach_r5:"精炼 1000",
   ach_g1:"1块金色岩石",ach_g2:"25块金色岩石",ach_g3:"100块金色岩石",
   ach_p1:"首次转生",ach_p2:"转生 10次",ach_p3:"转生 50次",ach_p4:"技能树完成",
   toast_achievement:"成就",toast_respec:"重置加点\n返还灰烬",
-  toast_detonation:"引爆\n+{n} 灰烬 · 精炼上限 {cap}",
+  toast_detonation:"引爆\n+{n} 灰烬",
   toast_offline:"欢迎回来\n+{n} 碎石 (离线 {m} 分钟)",
   toast_notenough:"累计碎石不足\n无法引爆",
   dlg_reset:"永久删除你的游戏？此操作不可撤销。",
@@ -1726,7 +1727,7 @@ zh:{
   node_surch2_nm:"过载 II",node_surch2_desc:"每个炸弹人同时炸弹 +1 (→3)",
   node_mechev_nm:"短引信",node_mechev_desc:"爆炸延迟 ×0.85（永久）",
   node_elan1_nm:"热启动",node_elan1_desc:"每轮以 {s} 秒的巅峰产量开始",
-  node_reprise_nm:"精炼续航",node_reprise_desc:"每轮从你精炼上限的 {p}% 开始",
+  node_reprise_nm:"精炼续航",node_reprise_desc:"每轮从你精炼记录的 {p}% 开始",
   node_etincelle_nm:"第一火花",node_etincelle_desc:"每轮以 火焰/引信/速度 5级开始",
   node_temp1_nm:"记忆",node_temp1_desc:"每级离线上限 +1小时 ({h} 小时)",
   node_rendem_nm:"拾遗",node_rendem_desc:"离线收益为产量的 {p}%",
@@ -1960,7 +1961,7 @@ function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
     draw();updateMini(dt);G._frames++;
     if(G.debug){const b=G.bombers[0]||{cx:0,cy:0};
       document.getElementById("dbg").textContent="BUILD "+BUILD+"\nfps "+Math.round(1/Math.max(dt,0.001))+
-        "\nbombers "+G.bombers.length+" bombes "+G.bombs.length+"\nraff "+G.raff+"/"+raffCap()+" puiss "+G.upg.puiss+
+        "\nbombers "+G.bombers.length+" bombes "+G.bombs.length+"\nraff "+G.raff+" puiss "+G.upg.puiss+
         "\npwr "+fmt(power())+" hp~"+fmt(rockHP(dominantType()))+"\ncumul "+G.totalDebris.toExponential(2)+" cend "+fmt(G.cendres);}
     G._huoT+=dt;if(G._huoT>=0.1){G._huoT=0;updateHUD();}
   }catch(err){console.error("frame",err);}
@@ -1968,7 +1969,6 @@ function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
 
 /* ============ INIT ============ */
 function init(){bindUI();initHudPictos();const had=load();if(G.raff>G.stats.maxRaff)G.stats.maxRaff=G.raff;
-  if(G.raff>raffCap())G.raff=raffCap();
   applyLang();
   G.runStartProsp=G.runStartProsp||1;G.dpsSmooth=G.dps||0;
   G.gridN=gridSizeFor(G.raff);G.grid=newGrid();resetBombers();applyMiniCorner();resize();updateHUD();drawStrip();
